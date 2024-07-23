@@ -1,0 +1,24 @@
+
+
+!!! outdated !!!
+
+csv can be read with 
+local function readCSVline(line) return serialization.unserialize("{"..line.."}") end
+
+nodes.csv:
+{id=?,x=?,y=?,z=?,parent=?}
+
+inventories.csv
+{id=?, node=?, x=?, y=?, z=?, side=?, space=?, isExternal=false,sizeMultiplier=1, file="?/?.csv"}
+-- isExternal tells if the inventory is an in/out depot. Items inside will not be tracked, and consequently one is free to manually move items into/out of it.
+
+invfiles/?.csv
+{slot, size, name, damage, label, hasTag, maxDamage, maxSize}
+
+drones.csv
+
+machines.csv
+-- name, 
+-- input and output as external inventories and slots (slot = -1 means any slot),
+-- whether the output takes time,
+-- additional actions the drone has to make after inputing all items

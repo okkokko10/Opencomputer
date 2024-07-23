@@ -1,0 +1,29 @@
+-- del /usr/lib/sem_message.lua; edit /usr/lib/sem_message.lua
+sem = require "sem_message"
+fa = require("fetch_api")
+ti = require("trackinventories")
+ih = require("inventoryhigh")
+Helper = require("Helper")
+Nodes = require("navigation_nodes")
+fhigh = require("fetch_high")
+
+droneaddr = next(fetch_high.drones)
+
+sem.setupDebug(100, 20)
+
+ih.scanAll()
+
+-- fa.send(nil, nil, 1, fa.actions.move(1, 0, 2), fa.actions.scan(1, sides.negx))
+fa.send(nil, nil, 1, fa.actions.scan(1, sides.negx))
+fa.send(nil, nil, 1, fa.actions.updateposition(5, 5, 9))
+
+fa.send(nil, nil, 1, fa.actions.moveto(3, 4, 8))
+
+ti.makeNew(1, 1, 4, 4, 10, sides.negx)
+
+ih.allItems()
+
+droneaddr = next(fetch_high.drones)
+fetch_high.scan(droneaddr, 1)
+
+fhigh.Location.pathfind(fhigh.drones[droneaddr], ti.getData(1))

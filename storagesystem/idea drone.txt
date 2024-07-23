@@ -1,0 +1,97 @@
+
+
+
+maxSize=64, maxDamage=0,label="Redstone",name="minecraft:redstone",damage=0,size=28,hasTag=false
+
+
+-- low priority problem: if something has max damage, it will register as a different item each time, showing up in the history.
+   - have items with maxDamage ~= 0 ignore the damage value when comparing to an item in history.
+
+item table: -- use stripitem to get this
+size, name, damage, label, hasTag, maxDamage, maxSize
+
+-- since it takes time to scan an entire inventory, it would be beneficial to know what slots have what items
+
+-- what to do when data is too big? could that happen with a small storage crate?
+
+-- when a drone scans an inventory, how should the data be formated?
+  - when a drone sends data to the master system, it should keep the data in memory until it is confirmed received.
+scan_data = {
+    id, -- the id of the scan, given to the drone in the scan request.
+    -- x, y, z, -- position of the inventory. might be redundant because of the id.
+    time_start, -- timestamp of starting
+    time_end, -- timestamp of finishing
+    space, -- number of slots in the inventory.
+    from, -- first slot scanned, usually 1
+    to, -- last slot scanned, usually equal to space. if the data is too big to send in one message, it might get split up. Wait no, if the data is too big, just split the string.
+    storage = [
+        slot -> (name, damage, label, hasTag, maxDamage, maxSize, size)
+    ] -- contents of the inventory
+}
+
+// scan request
+{
+    id,
+    route = [
+        (x,y,z)
+    ], -- the path of the drone. calculated by the master
+
+}
+
+-- actually, pathing somewhere could be its own command. maybe a request can have multiple commands.
+
+-- use modem wake up
+
+
+story:
+master sends order to drone: move to location (next to target), scan target side, send data, move back.
+drone confirms order with its id
+drone moves to location
+drone scans target
+drone sends data
+drone starts moving back
+drone receives confirmation of data.
+drone deletes data from memory.
+
+instead of scan, drone can also grab and drop items.
+
+drone can also scan multiple inventories in one trip, but if memory is low, will wait until memory can be freed.
+
+commands:
+move
+scan
+send data
+wait for confirmation
+free memory
+send status (energy, inventory, label set by order,)
+move x items from i slot in inventory in side s into internal slot j, or other way around.
+
+
+
+also can be asked for status at any point during a task.
+
+
+scan:
+{type="scan", id, side:number [, from:number, to: number]}
+
+
+	-- order.id
+	-- order.side
+	-- order.from
+	-- order.to
+	-- sd.id
+	-- sd.time_start
+	-- sd.time_end
+	-- sd.space
+	-- sd.from
+	-- sd.to
+	-- sd.storage
+
+
+permutate:
+{type="permutate", permutation={{f,t},...}}
+
+
+fill(side,filter,slots="12345678") -- fills drone with items, doesn't care what.
+dump -- opposite of fill.
+-- both send change information to master
