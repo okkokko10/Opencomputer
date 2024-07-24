@@ -6,10 +6,10 @@ csv can be read with
 local function readCSVline(line) return serialization.unserialize("{"..line.."}") end
 
 nodes.csv:
-{id=?,x=?,y=?,z=?,parent=?}
+{nodeid=?,x=?,y=?,z=?,nodeparent=?}
 
 inventories.csv
-{id=?, node=?, x=?, y=?, z=?, side=?, space=?, isExternal=false,sizeMultiplier=1, file="?/?.csv"}
+{id=?, nodeparent=?, x=?, y=?, z=?, side=?, space=?, isExternal=false,sizeMultiplier=1, file="?/?.csv"}
 -- isExternal tells if the inventory is an in/out depot. Items inside will not be tracked, and consequently one is free to manually move items into/out of it.
 
 invfiles/?.csv

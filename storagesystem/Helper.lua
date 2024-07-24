@@ -196,10 +196,25 @@ function Helper.saveCSV(target, filepath)
 
 end
 
---- makes a shallow string from the inputs
-function Helper.makeIndex(...)
-  return table.concat({...}, "~")
+function Helper.splitString(str, pattern)
+  local i, j = string.find(str, pattern)
+  if i then
+    return string.sub(str, 1, i - 1), Helper.splitIndex(string.sub(str, j + 1), pattern)
+  else
+    return string
+  end
 end
+
+--- makes a string from the inputs
+function Helper.makeIndex(...)
+  return serialization.serialize({...})
+end
+--- unpacks a value from Helper.makeIndex
+---@param index string
+function Helper.undoIndex(index)
+  return table.unpack(serialization.unserialize(index))
+end
+
 --- makes a shallow string from the target, only taking into account values between start and finish
 ---@param target table
 ---@param start integer

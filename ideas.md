@@ -159,3 +159,8 @@ orders that would increase remove_max above the amount currently commited, need 
 similarly, add_max+size cannot go above maxSize*sizeMultiplier
 when an order to remove items causes the amount to be 0, there also needs to be 0 incoming items to that slot to mark it as empty.
 - nevermind, if we just define "empty" as also 0 incoming items
+
+
+
+packet size will be a problem. use ids for items
+have all changes to the db stored, so that can be sent instead of the entire database everytime
