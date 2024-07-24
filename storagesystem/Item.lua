@@ -4,23 +4,43 @@ local Item = {}
 function Item.strip(inp, slot)
   return {slot or 0, inp.size, inp.name, inp.damage, inp.label, inp.hasTag, inp.maxDamage, inp.maxSize}
 end
--- function Item.slot      (self)  return self[1] end
--- function Item.size      (self)  return self[2] end
--- function Item.name      (self)  return self[3] end
--- function Item.damage    (self)  return self[4] end
--- function Item.label     (self)  return self[5] end
--- function Item.hasTag    (self)  return self[6] end
--- function Item.maxDamage (self)  return self[7] end
--- function Item.maxSize   (self)  return self[8] end
+function Item.getslot(self)
+  return self[1]
+end
+function Item.getsize(self)
+  return self[2]
+end
+function Item.getname(self)
+  return self[3]
+end
+function Item.getdamage(self)
+  return self[4]
+end
+function Item.getlabel(self)
+  return self[5]
+end
+function Item.gethasTag(self)
+  return self[6]
+end
+function Item.getmaxDamage(self)
+  return self[7]
+end
+function Item.getmaxSize(self)
+  return self[8]
+end
 
-Item.slot = 1
-Item.size = 2
-Item.name = 3
-Item.damage = 4
-Item.label = 5
-Item.hasTag = 6
-Item.maxDamage = 7
-Item.maxSize = 8
+Item.slotIndex = 1
+Item.sizeIndex = 2
+Item.nameIndex = 3
+Item.damageIndex = 4
+Item.labelIndex = 5
+Item.hasTagIndex = 6
+Item.maxDamageIndex = 7
+Item.maxSizeIndex = 8
+
+function Item.setsize(item, value)
+  item[2] = value
+end
 
 -- todo: Item and Itemstack separate
 -- drone api hasn't changed though
@@ -35,7 +55,7 @@ function Item.equals(a, b)
   if type(a) ~= "table" or type(b) ~= "table" then
     return false
   end
-  for i = Item.name, Item.maxSize do
+  for i = Item.nameIndex, Item.maxSizeIndex do
     if a[i] ~= b[i] then
       return false
     end

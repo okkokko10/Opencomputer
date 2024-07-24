@@ -59,7 +59,7 @@ function Inventory.get(id) -- returns inventory, with indices set to slots and t
       local t = serialization.unserialize(v)
       if t then
         spacetaken = spacetaken + 1
-        return t, t[Item.slot]
+        return t, Item.getslot(t)
       end
     end), spacetaken
   end
@@ -89,22 +89,22 @@ end
 function Inventory.update(id, contents_changed, contents_new)
   local storage = Inventory.get(id)
   for slot, change in pairs(contents_changed) do
-    local newsize = storage[slot][Item.size] + change
+    local newsize = Item.getsize(storage[slot]) + change
     if newsize == 0 then
       storage[slot] = nil
     elseif newsize < 0 then
       error("amount changed to below 0")
       -- todo: error
     else
-      storage[slot][Item.size] = newsize
+      Item.setsize(storage[slot], newsize)
     end
   end
   for cont in contents_new do
-    if storage[cont[Item.slot]] then
+    if storage[Item.getslot(cont)] then
       error("placed item in wrong slot")
       -- todo: error
     end
-    storage[cont[Item.slot]] = cont
+    storage[Item.getslot(cont)] = cont
   end
   Inventory.set(id, storage)
 end
@@ -116,22 +116,22 @@ end
 ---@param slot number|nil -- by default takes from item
 ---@param size number|nil -- by default takes from item
 function Inventory.changeSingle(id, item, slot, size)
-  slot = slot or item[Item.slot]
-  size = size or item[Item.size]
+  slot = slot or Item.getslot(item)
+  size = size or Item.getsize(item)
   local storage = Inventory.get(id)
   local current = storage[slot]
   if current then
     if not Item.equals(item, current) then
       error("added item incompatible with current item")
     end
-    local current_size = current[Item.size]
+    local current_size = Item.getsize(current)
     local new_size = current_size + size
     if new_size == 0 then
       storage[slot] = nil
     elseif new_size < 0 then
       error("removing below zero")
     else
-      current[Item.size] = new_size
+      Item.setsize(current, new_size)
     end
   else
     if size < 0 then
@@ -187,7 +187,7 @@ function Inventory.Lock.canAdd(id, slot, size, item)
   if current_item and not Item.equals(item, current_item) then
     return false
   end
-  local current_size = current_item[Item.size]
+  local current_size = Item.getsize(current_item)
 
   ---@type table Item
   local current_added = Inventory.Lock.add_max[Helper.makeIndex(id, slot)]
@@ -196,13 +196,13 @@ function Inventory.Lock.canAdd(id, slot, size, item)
   end
   local current_added_size
   if current_added then
-    current_added_size = current_added[Item.size]
+    current_added_size = Item.getsize(current_added)
   else
     current_added_size = 0
   end
 
   local sizeMult = Inventory.getSizeMultiplier(id)
-  if current_size + current_added_size + size <= item[Item.maxSize] * sizeMult then
+  if current_size + current_added_size + size <= Item.getmaxSize(item) * sizeMult then
     -- the Item fits
     return true
   else
@@ -221,7 +221,7 @@ function Inventory.Lock.add_add_max(id, slot, size, added_item, precalculated_ca
   if precalculated_canAdd or Inventory.Lock.canAdd(id, slot, size, added_item) then
     local current_added = Inventory.Lock.add_max[Helper.makeIndex(id, slot)]
     if current_added then
-      current_added[Item.size] = current_added[Item.size] + size
+      Item.setsize(current_added, Item.getsize(current_added) + size)
     else
       Inventory.Lock.add_max[Helper.makeIndex(id, slot)] = Item.copy(added_item, slot, size)
     end
@@ -248,12 +248,12 @@ function Inventory.Lock.canRemove(id, slot, size, item)
   end
   local current_removed_size
   if current_removed then
-    current_removed_size = current_removed[Item.size]
+    current_removed_size = Item.getsize(current_removed)
   else
     current_removed_size = 0
   end
 
-  local current_size = current_item[Item.size]
+  local current_size = Item.getsize(current_item)
 
   if current_removed_size + size <= current_size then
     -- the Item fits
@@ -268,7 +268,7 @@ function Inventory.Lock.add_remove_max(id, slot, size, removed_item, precalculat
   if precalculated_canRemove or Inventory.Lock.canRemove(id, slot, size, removed_item) then
     local current_removed = Inventory.Lock.remove_max[Helper.makeIndex(id, slot)]
     if current_removed then
-      current_removed[Item.size] = current_removed[Item.size] + size
+      Item.setsize(current_removed, Item.getsize(current_removed) + size)
     else
       Inventory.Lock.remove_max[Helper.makeIndex(id, slot)] = Item.copy(item, slot, size)
     end
@@ -284,11 +284,11 @@ end
 ---@param size number
 function Inventory.Lock.commitAdd(id, slot, size)
   local current_added = Inventory.Lock.add_max[Helper.makeIndex(id, slot)]
-  local new_size = current_added[Item.size] - size
+  local new_size = Item.getsize(current_added) - size
   if new_size < 0 then
     error("committing more than possible: Inventory.Lock.commitAdd(" .. id .. ", " .. slot .. ", " .. size .. ")")
   end
-  current_added[Item.size] = new_size
+  Item.setsize(current_added, new_size)
   Inventory.changeSingle(id, current_added, slot, size)
 end
 
@@ -298,11 +298,11 @@ end
 ---@param size number
 function Inventory.Lock.commitRemove(id, slot, size)
   local current_removed = Inventory.Lock.add_max[Helper.makeIndex(id, slot)]
-  local new_size = current_removed[Item.size] - size
+  local new_size = Item.getsize(current_removed) - size
   if new_size < 0 then
     error("committing more than possible: Inventory.Lock.commitRemove(" .. id .. ", " .. slot .. ", " .. size .. ")")
   end
-  current_removed[Item.size] = new_size
+  Item.setsize(current_removed, new_size)
   Inventory.changeSingle(id, current_removed, slot, -size)
 end
 
@@ -314,8 +314,8 @@ end
 ---@return boolean success
 function Inventory.Lock.startAdd(id, item, slot, size)
   -- todo: need to actually order a drone
-  slot = slot or item[Item.slot]
-  size = size or item[Item.size]
+  slot = slot or Item.getslot(item)
+  size = size or Item.getsize(item)
   return Inventory.Lock.add_add_max(id, slot, size, item)
 
 end
@@ -327,8 +327,8 @@ end
 ---@param size (nil | number)
 ---@return boolean success
 function Inventory.Lock.startRemove(id, item, slot, size)
-  slot = slot or item[Item.slot]
-  size = size or item[Item.size]
+  slot = slot or Item.getslot(item)
+  size = size or Item.getsize(item)
   return Inventory.Lock.add_remove_max(id, slot, size, item)
 
 end

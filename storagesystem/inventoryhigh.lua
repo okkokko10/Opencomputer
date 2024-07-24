@@ -19,10 +19,10 @@ function InventoryHigh.allItems()
       for slot, item in pairs(items) do
         local index = Item.makeIndex(item)
         local current = all_items[index]
-        local size = item[Item.size]
+        local size = Item.getsize(item)
         local position_info = {id, slot, size}
         if current then
-          current[Item.size] = current[Item.size] + size
+          Item.setsize(current, Item.getsize(item) + size)
           table.insert(current.foundAt, position_info)
         else
           local copy = Item.copy(item, 1, size) -- slot set to 1, although size should be the same regardless.
