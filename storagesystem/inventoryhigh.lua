@@ -2,6 +2,7 @@ local ti = require "trackinventories"
 local Helper = require "Helper"
 local Nodes = require "navigation_nodes"
 local Drones = require "fetch_high"
+local Item = require "Item"
 local InventoryHigh = {}
 
 -- returns a table of all items, with slot set to 1, size being a sum of all of that item, 
@@ -16,15 +17,15 @@ function InventoryHigh.allItems()
     space_taken = space_taken + taken_slots
     if not inventory.isExternal then
       for slot, item in pairs(items) do
-        local index = ti.Item.makeIndex(item)
+        local index = Item.makeIndex(item)
         local current = all_items[index]
-        local size = item[ti.Item.size]
+        local size = item[Item.size]
         local position_info = {id, slot, size}
         if current then
-          current[ti.Item.size] = current[ti.Item.size] + size
+          current[Item.size] = current[Item.size] + size
           table.insert(current.foundAt, position_info)
         else
-          local copy = ti.Item.copy(item, 1, size) -- slot set to 1, although size should be the same regardless.
+          local copy = Item.copy(item, 1, size) -- slot set to 1, although size should be the same regardless.
           all_items[index] = copy
           copy.foundAt = {position_info}
         end
