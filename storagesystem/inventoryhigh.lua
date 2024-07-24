@@ -3,6 +3,8 @@ local Helper = require "Helper"
 local Nodes = require "navigation_nodes"
 local Drones = require "fetch_high"
 local Item = require "Item"
+local DroneInstruction = require "DroneInstruction"
+
 local InventoryHigh = {}
 
 -- returns a table of all items, with slot set to 1, size being a sum of all of that item, 
@@ -37,12 +39,12 @@ function InventoryHigh.allItems()
 end
 
 function InventoryHigh.scanAll()
-  local instr = Drones.DroneInstruction.join(Helper.map(ti.inventories, function(inv_data)
-    return Drones.DroneInstruction.scan(inv_data.id)
+  local instr = DroneInstruction.join(Helper.map(ti.inventories, function(inv_data)
+    return DroneInstruction.scan(inv_data.id)
   end))
   local dron = Drones.getFreeDrone()
   if dron then
-    return true, Drones.DroneInstruction.execute(instr, dron)
+    return true, DroneInstruction.execute(instr, dron)
 
   end
 end

@@ -164,3 +164,5 @@ when an order to remove items causes the amount to be 0, there also needs to be 
 
 packet size will be a problem. use ids for items
 have all changes to the db stored, so that can be sent instead of the entire database everytime
+
+a way to see what files need updating if there's multiple copies of the db. storageIO
