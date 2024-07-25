@@ -42,9 +42,9 @@ end
 function Helper.splitString(str, pattern)
   local i, j = string.find(str, pattern)
   if i then
-    return string.sub(str, 1, i - 1), Helper.splitIndex(string.sub(str, j + 1), pattern)
+    return string.sub(str, 1, i - 1), Helper.splitString(string.sub(str, j + 1), pattern)
   else
-    return string
+    return str
   end
 end
 

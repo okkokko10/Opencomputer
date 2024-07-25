@@ -21,8 +21,8 @@ function longmsg(name,msg)
 		acm("longmsg",id,i,ma,name,string.sub(msg,(i-1)*mxs+1,i*mxs))
 	end
 end
-function stis(slot)
-	local i,h = db.get(1),db.computeHash(1)
+function stis(i,slot)
+	local h = db and db.computeHash(1)
 	return i and "{"..table.concat({slot,i.size,"\""..i.name.."\"",i.damage,"\""..i.label.."\"",i.hasTag and "true" or "false",i.maxDamage,i.maxSize,"\""..h.."\""},",").."}"
 end
 
@@ -62,8 +62,8 @@ function a.scan(o,noSend)
 	local ts=computer.uptime()
 	local st={}
 	for i=first, last do
-		ic.store(side,i,dba,1)
-		table.insert(st,stis(i))
+		db and ic.store(side,i,dba,1)
+		table.insert(st,stis(ic.getStackInSlot(side, i),i))
 	end
 	local te=computer.uptime()
 	local scd= "{id="..o.id..",time_start="..ts..",time_end="..te..",space="..space..",from="..first..",to="..last..",storage={" .. table.concat(st,",") .. "}" .. "}"
@@ -115,8 +115,8 @@ function ist()
 	local space=d.inventorySize() or 0
 	local storage={}
 	for i=1, space do
-		ic.storeInternal(i,dba,1)
-		table.insert(storage,stis(i))
+		db and ic.storeInternal(i,dba,1)
+		table.insert(storage,stis(ic.getStackInInternalSlot(i),i))
 	end
 	return "space="..space..",storage={" .. table.concat(storage,",") .. "}"
 

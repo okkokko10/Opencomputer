@@ -1,4 +1,5 @@
 local serialization = require "serialization"
+local Helper = require "Helper"
 
 -- slot, size, name, damage, label, hasTag, maxDamage, maxSize
 local Item = {}
@@ -29,6 +30,11 @@ function Item.getmaxDamage(self)
 end
 function Item.getmaxSize(self)
   return Item.getUItem(self)[7]
+end
+
+function Item.getMod(self)
+  local modname, name = Helper.splitString(Item.getname(self), ":")
+  return modname
 end
 
 Item.slotIndex = 1

@@ -25,7 +25,7 @@ function InventoryHigh.allItems()
         local size = Item.getsize(item)
         local position_info = {id, slot, size}
         if current then
-          Item.setsize(current, Item.getsize(item) + size)
+          Item.setsize(current, Item.getsize(current) + size)
           table.insert(current.foundAt, position_info)
         else
           local copy = Item.copy(item, itemcounter, size) -- slot set to a new one, although size should be the same regardless.
@@ -55,13 +55,13 @@ function InventoryHigh.scanAll()
   local instr = Helper.map(ti.inventories, function(inv_data)
     return DroneInstruction.scan(inv_data.id)
   end)
-  for inv_data in ti.inventories do
+  for k, inv_data in pairs(ti.inventories) do
     DroneInstruction.queueExecute(DroneInstruction.scan(inv_data.id))
   end
 end
 
 --- takes an item and 
-function InventoryHigh.find()
+function InventoryHigh.move(item)
 
 end
 

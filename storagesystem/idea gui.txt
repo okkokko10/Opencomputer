@@ -1,6 +1,24 @@
 
+-- browse pages with up/down
 
 
+-- slots taken / total
+-- page number / total
+
+-- rows of items
+
+-- show amount of items visually with a bar (behind them?)
+
+
+
+
+
+[<]         [>]
+_______ -- search
+
+-- keybinds? a for favourite,
+
+-- double click a row to request it, bringing up amount
 
 
 
