@@ -13,6 +13,7 @@ function InventoryHigh.allItems()
   local all_items = {}
   local space = 0
   local space_taken = 0
+  local itemcounter = 1
   for id, inventory in pairs(ti.inventories) do
     local items, taken_slots = ti.get(id)
     space = space + ti.getSpace(id)
@@ -27,7 +28,8 @@ function InventoryHigh.allItems()
           Item.setsize(current, Item.getsize(item) + size)
           table.insert(current.foundAt, position_info)
         else
-          local copy = Item.copy(item, 1, size) -- slot set to 1, although size should be the same regardless.
+          local copy = Item.copy(item, itemcounter, size) -- slot set to a new one, although size should be the same regardless.
+          itemcounter = itemcounter + 1
           all_items[index] = copy
           copy.foundAt = {position_info}
         end

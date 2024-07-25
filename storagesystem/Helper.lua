@@ -10,7 +10,7 @@ local Helper = {}
 ---@param fun function
 function Helper.map(target, fun)
   local out = {}
-  for key, value in ipairs(target) do
+  for key, value in pairs(target) do
     out[key] = fun(value, key)
   end
   return out

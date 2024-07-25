@@ -3,6 +3,8 @@ c=component
 modem=c.proxy(c.list("modem")())
 d=c.proxy(c.list("drone")())
 ic=c.proxy(c.list("inventory_controller")())
+dba=c.list("database")()
+db=dba and c.proxy(dba)
 
 function unserialize(data)
 	checkArg(1,data,"string")
@@ -19,8 +21,9 @@ function longmsg(name,msg)
 		acm("longmsg",id,i,ma,name,string.sub(msg,(i-1)*mxs+1,i*mxs))
 	end
 end
-function stis(i,slot)
-	return i and "{"..table.concat({slot,i.size,"\""..i.name.."\"",i.damage,"\""..i.label.."\"",i.hasTag and "true" or "false",i.maxDamage,i.maxSize},",").."}"
+function stis(slot)
+	local i,h = db.get(1),db.computeHash(1)
+	return i and "{"..table.concat({slot,i.size,"\""..i.name.."\"",i.damage,"\""..i.label.."\"",i.hasTag and "true" or "false",i.maxDamage,i.maxSize,h},",").."}"
 end
 
 x=0
@@ -58,8 +61,8 @@ function a.scan(o,noSend)
 	local ts=computer.uptime()
 	local st={}
 	for i=first, last do
-		local temp=stis(ic.getStackInSlot(side, i),i)
-		table.insert(st,temp)
+		ic.store(side,i,dba,1)
+		table.insert(st,stis(i))
 	end
 	local te=computer.uptime()
 	local scd= "{id="..o.id..",time_start="..ts..",time_end="..te..",space="..space..",from="..first..",to="..last..",storage={" .. table.concat(st,",") .. "}" .. "}"
@@ -111,8 +114,8 @@ function ist()
 	local space=d.inventorySize() or 0
 	local storage={}
 	for i=1, space do
-		local temp=stis(ic.getStackInInternalSlot(i))
-		table.insert(storage,temp and "["..i.."]="..temp)
+		ic.storeInternal(i,dba,1)
+		table.insert(storage,stis(i))
 	end
 	return "space="..space..",storage={" .. table.concat(storage,",") .. "}"
 
