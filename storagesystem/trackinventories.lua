@@ -3,6 +3,7 @@ local serialization = require("serialization")
 local event = require "event"
 local Helper = require "Helper"
 local Item = require "Item"
+local filehelp = require "filehelp"
 
 -- local args, options = shell.parse(...)
 -- shell.resolve(args[1])
@@ -14,7 +15,7 @@ Inventory.INVENTORIES_PATH = "/usr/storage/inventories.csv"
 Inventory.FILENAME_START = "/usr/storage/invs/inv_"
 
 -- {id=?, nodeparent=?, x=?, y=?, z=?, side=?, space=?, isExternal=?, sizeMultiplier=1, file="?/?.csv"}
-Inventory.inventories = Helper.loadCSV(Inventory.INVENTORIES_PATH)
+Inventory.inventories = filehelp.loadCSV(Inventory.INVENTORIES_PATH)
 
 --- gets inventory data
 --- counts as a Location
@@ -30,7 +31,7 @@ function Inventory.makeNewInvFilePath(id)
 end
 
 function Inventory.saveInventories() -- save the inventories file
-  Helper.saveCSV(Inventory.inventories, Inventory.INVENTORIES_PATH)
+  filehelp.saveCSV(Inventory.inventories, Inventory.INVENTORIES_PATH)
 end
 
 function Inventory.set(id, contents, space) -- replaces old inventory data with contents. returns true if successful
@@ -42,7 +43,7 @@ function Inventory.set(id, contents, space) -- replaces old inventory data with 
       -- signal change? 
     end
     local file_path = inv.file
-    Helper.saveCSV(contents, file_path)
+    filehelp.saveCSV(contents, file_path)
     return true
   else
     error("no such inventory: " .. id)
@@ -55,7 +56,7 @@ function Inventory.get(id) -- returns inventory, with indices set to slots and t
   if inv then
     local file_path = inv.file
     local spacetaken = 0
-    return Helper.mapWithKeys(Helper.loadf(file_path), function(v) -- todo: replace with Helper.loadCSV
+    return Helper.mapWithKeys(filehelp.loadf(file_path), function(v) -- todo: replace with filehelp.loadCSV
       local t = serialization.unserialize(v)
       if t then
         spacetaken = spacetaken + 1

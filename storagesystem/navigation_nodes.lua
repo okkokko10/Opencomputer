@@ -6,10 +6,10 @@ local Nodes = {}
 
 Nodes.NODES_PATH = "/usr/storage/nodes.csv"
 
-Nodes.nodes = Helper.loadCSV(Nodes.NODES_PATH, "nodeid")
+Nodes.nodes = filehelp.loadCSV(Nodes.NODES_PATH, "nodeid")
 
 function Nodes.saveNodes()
-  Helper.saveCSV(Nodes.nodes, Nodes.NODES_PATH)
+  filehelp.saveCSV(Nodes.nodes, Nodes.NODES_PATH)
 end
 
 --- gets the parent of a node, with other fallback names. this way inventory data and Location also works
