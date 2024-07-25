@@ -109,7 +109,7 @@ function DroneInstruction.execute(instruction, drone_address, finish_listener)
 
   Location.copy(final.finish_location, Drones.drones[drone_address])
 
-  event.listen("sem_message", function(e, localAddress, remoteAddress, port, distance, name, message)
+  event.listen("longmsg_message", function(e, localAddress, remoteAddress, port, distance, name, message)
     if remoteAddress == drone_address and name == "echo" and message == finish_message then
       Drones.setFree(drone_address)
       if finish_listener then

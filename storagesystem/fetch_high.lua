@@ -60,7 +60,7 @@ local function drone_listener(e, localAddress, remoteAddress, port, distance, na
   end
 end
 
-event.listen("sem_message", drone_listener)
+event.listen("longmsg_message", drone_listener)
 
 function Drones.addDrone(address, nodeparent, x, y, z)
   Drones.drones[address] = {

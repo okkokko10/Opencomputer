@@ -1,5 +1,5 @@
--- del /usr/lib/sem_message.lua; edit /usr/lib/sem_message.lua
-sem = require "sem_message"
+-- del /usr/lib/longmsg_message.lua; edit /usr/lib/longmsg_message.lua
+longmsg = require "longmsg_message"
 fa = require("fetch_api")
 ti = require("trackinventories")
 ih = require("inventoryhigh")
@@ -9,7 +9,7 @@ fhigh = require("fetch_high")
 
 droneaddr = next(fetch_high.drones)
 
-sem.setupDebug(100, 20)
+longmsg.setupDebug(100, 20)
 
 ih.scanAll()
 

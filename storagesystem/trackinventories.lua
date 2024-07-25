@@ -352,7 +352,7 @@ local function scan_data_listener(e, localAddress, remoteAddress, port, distance
 end
 
 local function startListening()
-  return event.listen("sem_message", scan_data_listener)
+  return event.listen("longmsg_message", scan_data_listener)
 end
 local cancelvalue = startListening()
 

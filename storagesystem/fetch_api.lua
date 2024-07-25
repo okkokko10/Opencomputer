@@ -1,6 +1,6 @@
 local serialization = require "serialization"
 
-local sem = require("sem_message")
+local longmsg = require("longmsg_message")
 
 local actions = {}
 
@@ -119,13 +119,13 @@ end
 local function send(address, port, id, ...) -- address: string or nil, port: int or nil, id: string or number or nil, ...: actions
   id = id or math.random()
   local message = serialization.serialize({...})
-  sem.actualmessage(address, port, "fetcher", id, message)
+  longmsg.actualmessage(address, port, "fetcher", id, message)
   return id, message
 end
 local function sendTable(address, port, id, orders) -- address: string or nil, port: int or nil, id: string or number or nil, ...: actions
   id = id or math.random()
   local message = serialization.serialize(orders)
-  sem.actualmessage(address, port, "fetcher", id, message)
+  longmsg.actualmessage(address, port, "fetcher", id, message)
   return id, message
 end
 

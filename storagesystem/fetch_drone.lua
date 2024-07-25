@@ -11,12 +11,12 @@ end
 function acm(...)
 	modem.broadcast(PORT,...)
 end
-function sem(name,msg)
+function longmsg(name,msg)
 	local id=math.random()
 	local mxs=8192-49-#name
 	local ma=math.ceil(#msg/mxs)
 	for i=1,ma do
-		acm("sem",id,i,ma,name,string.sub(msg,(i-1)*mxs+1,i*mxs))
+		acm("longmsg",id,i,ma,name,string.sub(msg,(i-1)*mxs+1,i*mxs))
 	end
 end
 function stis(i,slot)
@@ -64,7 +64,7 @@ function a.scan(o,noSend)
 	local te=computer.uptime()
 	local scd= "{id="..o.id..",time_start="..ts..",time_end="..te..",space="..space..",from="..first..",to="..last..",storage={" .. table.concat(st,",") .. "}" .. "}"
 	if not noSend then
-		sem("scan_data",scd)
+		longmsg("scan_data",scd)
 	end
 	return scd
 end
@@ -118,7 +118,7 @@ function ist()
 
 end
 function a.status(o,ovN,extra)
-	sem(ovN or "status","{"..ist()..",freeMemory="..computer.freeMemory()..",totalMemory="..computer.totalMemory()..
+	longmsg(ovN or "status","{"..ist()..",freeMemory="..computer.freeMemory()..",totalMemory="..computer.totalMemory()..
 	",energy="..computer.energy()..",maxEnergy="..computer.maxEnergy()..",uptime="..computer.uptime()..
 	",x="..x..",y="..y..",z="..z..",cmd_id="..(c_cmd_id or "nil")..",cmd_index="..(c_cmd_index or "nil")..
 	",offset="..d.getOffset()..
@@ -127,7 +127,7 @@ function a.status(o,ovN,extra)
 end
 
 function a.echo(o)
-	sem("echo",tostring(o.message))
+	longmsg("echo",tostring(o.message))
 end
 
 function a.updateposition(o)
