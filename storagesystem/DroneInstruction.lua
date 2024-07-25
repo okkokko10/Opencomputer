@@ -20,6 +20,12 @@ function DroneInstruction.make(start_location, finish_location, actions)
     actions = actions
   }
   return temp
+end
+
+--- makes an instruction that is at location but doesn't do anything
+---@param location table Location
+function DroneInstruction.at(location)
+  return DroneInstruction.make(location, location, {})
 
 end
 

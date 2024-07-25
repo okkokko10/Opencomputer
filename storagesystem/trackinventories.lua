@@ -338,7 +338,7 @@ end
 -- todo: currently does not support from and to. as such, those themselves are disabled.
 -- scan_data = {id=?,time_start=?,time_end=?,space=?,from=?,to=?,storage={[?]={...Item...}}}
 local function updateFromScan(scan_data)
-  Inventory.set(scan_data.id, scan_data.storage, scan_data.space)
+  Inventory.set(scan_data.id, Helper.mapWithKeys(scan_data.storage, Item.parseScanned), scan_data.space)
 end
 
 -- automatically update inventories when scan data arrives

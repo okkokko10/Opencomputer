@@ -166,3 +166,5 @@ packet size will be a problem. use ids for items
 have all changes to the db stored, so that can be sent instead of the entire database everytime
 
 a way to see what files need updating if there's multiple copies of the db. storageIO
+
+query all drones and add them to the list of drones.
