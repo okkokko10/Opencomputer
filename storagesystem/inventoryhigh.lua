@@ -40,7 +40,7 @@ function InventoryHigh.allItems()
 
 end
 
-function InventoryHigh.scanAll()
+function InventoryHigh.scanAllOne()
   local instr = DroneInstruction.join(Helper.map(ti.inventories, function(inv_data)
     return DroneInstruction.scan(inv_data.id)
   end))
@@ -48,6 +48,15 @@ function InventoryHigh.scanAll()
   if dron then
     return true, DroneInstruction.execute(instr, dron)
 
+  end
+end
+
+function InventoryHigh.scanAll()
+  local instr = Helper.map(ti.inventories, function(inv_data)
+    return DroneInstruction.scan(inv_data.id)
+  end)
+  for inv_data in ti.inventories do
+    DroneInstruction.queueExecute(DroneInstruction.scan(inv_data.id))
   end
 end
 

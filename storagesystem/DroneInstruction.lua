@@ -6,6 +6,7 @@ local Helper = require "Helper"
 local Nodes = require "navigation_nodes"
 local ti = require("trackinventories")
 local Location = require "Location"
+local Drones = require "fetch_high"
 
 local DroneInstruction = {}
 
@@ -126,6 +127,22 @@ function DroneInstruction.execute(instruction, drone_address, finish_listener)
   end)
   return api.sendTable(drone_address, nil, instruction_id, final.actions)
 
+end
+
+---
+---@param instruction any
+---@param finish_listener any
+function DroneInstruction.queueExecute(instruction, finish_listener)
+  local f = function(address)
+    DroneInstruction.execute(instruction, address, finish_listener)
+    return false
+  end
+  local addr = Drones.getFreeDrone()
+  if addr then
+    f(addr)
+  else
+    event.listen("drone_freed", f)
+  end
 end
 
 return DroneInstruction

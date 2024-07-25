@@ -5,11 +5,11 @@ ti = require("trackinventories")
 ih = require("inventoryhigh")
 Helper = require("Helper")
 Nodes = require("navigation_nodes")
-fhigh = require("fetch_high")
-
-droneaddr = next(fetch_high.drones)
+Drones = require("fetch_high")
 
 longmsg.setupDebug(100, 20)
+
+droneaddr = next(fetch_high.drones)
 
 ih.scanAll()
 

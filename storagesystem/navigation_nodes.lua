@@ -1,5 +1,6 @@
 --- coordinate nodes in a tree that allow for drone navigation
 local Helper = require "Helper"
+local filehelp = require "filehelp"
 
 --- 3d coordinate nodes in a tree that allow for drone navigation
 local Nodes = {}

@@ -76,6 +76,7 @@ local function receiveEcho(address, message, distance)
     drone.y = y
     drone.z = z
     drone.nodeparent = closest.nodeid
+    api.send(address, nil, nil, api.actions.updateposition(x, y, z))
     Drones.setFree(address)
   end
 end
@@ -148,11 +149,5 @@ end
 function Drones.registerNearby()
   api.send(nil, nil, nil, api.actions.echo("register fetcher"))
 end
-
-local instruction = {
-  actions = {},
-  start_location = {},
-  finish_location = {}
-}
 
 return Drones

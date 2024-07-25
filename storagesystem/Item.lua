@@ -1,3 +1,5 @@
+local serialization = require "serialization"
+
 -- slot, size, name, damage, label, hasTag, maxDamage, maxSize
 local Item = {}
 
@@ -57,7 +59,7 @@ function Item.getHash(item)
   end
 end
 function Item.getUItem(self)
-  return item.uitem or item
+  return self.uitem or self
   -- if type(item) == "string" then
   --   return error("unimplemented")
   -- end

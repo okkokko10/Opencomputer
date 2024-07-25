@@ -23,7 +23,7 @@ function longmsg(name,msg)
 end
 function stis(slot)
 	local i,h = db.get(1),db.computeHash(1)
-	return i and "{"..table.concat({slot,i.size,"\""..i.name.."\"",i.damage,"\""..i.label.."\"",i.hasTag and "true" or "false",i.maxDamage,i.maxSize,h},",").."}"
+	return i and "{"..table.concat({slot,i.size,"\""..i.name.."\"",i.damage,"\""..i.label.."\"",i.hasTag and "true" or "false",i.maxDamage,i.maxSize,"\""..h.."\""},",").."}"
 end
 
 x=0
