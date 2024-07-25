@@ -7,6 +7,7 @@ local Nodes = require "navigation_nodes"
 local ti = require("trackinventories")
 local Location = require "Location"
 local filehelp = require "filehelp"
+local longmsg = require "longmsg_message"
 
 -- set up listener for the return message
 -- buffer for requests while all drones are busy
@@ -36,13 +37,55 @@ function Drones.save()
   filehelp.saveCSV(Drones.drones, Drones.DRONES_PATH)
 end
 
-local function receiveEcho(address, message)
+local registering = {}
 
+local function receiveEcho(address, message, distance)
+  if message == "register fetcher" then
+    if not Drones.drones[address] then
+      Drones.drones[address] = {
+        address = address,
+        business = true
+        -- nodeparent, x, y, z are unknown
+      }
+      registering[address] = {distance}
+      local ofs = 1 / (distance * distance + 100)
+
+      api.send(address, nil, nil, api.actions.execute("ofs=" .. ofs), api.actions.move(1, 0, 0),
+        api.actions.echo("register fetcher x"), api.actions.move(-1, 1, 0), api.actions.echo("register fetcher y"),
+        api.actions.move(0, -1, 1), api.actions.echo("register fetcher z"), api.actions.move(0, 0, -1),
+        api.actions.echo("register fetcher o"), api.actions.execute("ofs=0.1"))
+    end
+  elseif message == "register fetcher x" then
+    registering[address][2] = distance
+  elseif message == "register fetcher y" then
+    registering[address][3] = distance
+  elseif message == "register fetcher z" then
+    registering[address][4] = distance
+  elseif message == "register fetcher o" then
+    registering[address][5] = distance
+    local start, xd, yd, zd, origin = table.unpack(registering[address])
+    local o2 = origin * origin
+    local pos = longmsg.position
+
+    local x = ((xd * xd - o2) - 1) * 0.5 + pos.x
+    local y = ((yd * yd - o2) - 1) * 0.5 + pos.y
+    local z = ((zd * zd - o2) - 1) * 0.5 + pos.z
+    local closest = Nodes.findclosest(x, y, z)
+    local drone = Drones.drones[address]
+    drone.x = x
+    drone.y = y
+    drone.z = z
+    drone.nodeparent = closest.nodeid
+    Drones.setFree(address)
+  end
 end
 
 local function updateFromStatus(status, address, statusName)
-  status.statusName = statusName
   local drone = Drones.drones[address]
+  if not drone then
+    return
+  end
+  status.statusName = statusName
   drone.status = status
   if statusName == "wakeup" then
     -- todo: send the drone its stored coordinates.
@@ -51,14 +94,13 @@ local function updateFromStatus(status, address, statusName)
 end
 
 local function drone_listener(e, localAddress, remoteAddress, port, distance, name, message)
-  if Drones.drones[remoteAddress] then
-    if (name == "status" or name == "wakeup" or name == "error") then
-      local status = serialization.unserialize(message)
-      updateFromStatus(status, remoteAddress, name)
-    elseif (name == "echo") then
-      receiveEcho(remoteAddress, message)
-    end
+  if (name == "status" or name == "wakeup" or name == "error") then
+    local status = serialization.unserialize(message)
+    updateFromStatus(status, remoteAddress, name)
+  elseif (name == "echo") then
+    receiveEcho(remoteAddress, message, distance)
   end
+
 end
 
 event.listen("longmsg_message", drone_listener)
@@ -101,6 +143,10 @@ function Drones.scan(address, id)
   motions[#motions + 1] = api.actions.scan(id, inv_data.side)
   Location.copy(inv_data, drone)
   return api.sendTable(address, nil, nil, (motions))
+end
+
+function Drones.registerNearby()
+  api.send(nil, nil, nil, api.actions.echo("register fetcher"))
 end
 
 local instruction = {

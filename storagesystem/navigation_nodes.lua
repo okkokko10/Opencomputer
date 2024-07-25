@@ -119,4 +119,16 @@ function Nodes.create(nodeid, x, y, z, nodeparent)
 
 end
 
+--- gets the closest node to the coordinates
+---@param x number
+---@param y number
+---@param z number
+---@return table Node
+function Nodes.findclosest(x, y, z)
+  local temp = Helper.min(Nodes.nodes, function(v, k)
+    return (v.x - x) * (v.x - x) + (v.y - y) * (v.y - y) + (v.z - z) * (v.z - z)
+  end)
+  return temp
+end
+
 return Nodes

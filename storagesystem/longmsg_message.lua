@@ -7,7 +7,12 @@ local longmsg = {}
 local event = require "event"
 local component = require "component"
 
-longmsg.default_address = nil
+local config = require("filehelp").loadtable("/usr/cfgs/longmsg_message.cfg", true)
+
+longmsg.default_address = config.default_address
+
+--- {x=,y=,z=}
+longmsg.position = config.position
 
 local modem = component.list("modem")()
 if modem then
@@ -22,7 +27,7 @@ if tunnel then
   end
 end
 
-longmsg.default_port = 2400
+longmsg.default_port = config.default_port or 2400
 if longmsg.modem then
   longmsg.modem.open(longmsg.default_port)
 end

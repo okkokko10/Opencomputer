@@ -168,3 +168,11 @@ have all changes to the db stored, so that can be sent instead of the entire dat
 a way to see what files need updating if there's multiple copies of the db. storageIO
 
 query all drones and add them to the list of drones.
+
+idea: all stored tables have a persistent=true tag?
+
+relation?
+Node(nodeid)( x, y, z, nodeparent FK)
+Inventory(iid)( side, space, isExternal, sizeMultiplier, file, nodeid FK)
+Item(itemid)(name, damage, label, hasTag, maxDamage, maxSize)
+ItemSlot(iid FK, slot)(itemid FK, size, future_max, future_min)

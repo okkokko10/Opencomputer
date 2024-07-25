@@ -100,4 +100,21 @@ function Helper.find(target, condition)
   end
 end
 
+--- gets the value and key that result in the smallest output of fun.
+---@param target table
+---@param fun fun(v:any,k:any):number
+function Helper.min(target, fun)
+  local current_points = math.huge
+  local current_value = nil
+  local current_key = nil
+  for k, v in pairs(target) do
+    local points = fun(v, k)
+    if points < current_points then
+      current_value = v
+      current_key = k
+    end
+  end
+  return current_value, current_key
+end
+
 return Helper

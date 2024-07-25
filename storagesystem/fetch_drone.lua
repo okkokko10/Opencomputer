@@ -29,6 +29,10 @@ end
 x=0
 y=0
 z=0
+ofs = 0.1
+function center() 
+	while d.getOffset()>ofs or d.getVelocity()>ofs do end
+end
 
 a={}
 
@@ -40,17 +44,14 @@ function a.move(o)
 	x=x+o.dx
 	y=y+o.dy
 	z=z+o.dz
-	while d.getOffset() > 0.1 do end
+	center()
 end
 function a.moveto(o)
-	local dx=o.x-x
-	local dy=o.y-y
-	local dz=o.z-z
-	d.move(dx,dy,dz)
-	x=x+dx
-	y=y+dy
-	z=z+dz
-	while d.getOffset() > 0.1 do end
+	d.move(o.x-x,o.y-y,o.z-z)
+	x=o.x
+	y=o.y
+	z=o.z
+	center()
 end
 function a.scan(o,noSend)
 	local side=o.side
@@ -94,7 +95,7 @@ function a.suckall(o)
 end
 
 function a.execute(o)
-	pcall(function() return load(o.code) end)
+	load(o.code)()
 end
 
 function a.setWakeMessage(o)
