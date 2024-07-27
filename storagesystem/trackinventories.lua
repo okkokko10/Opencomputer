@@ -10,6 +10,9 @@ local filehelp = require "filehelp"
 
 local Inventory = {}
 
+---@alias Contents table
+---@alias IID number|string
+
 Inventory.Item = Item
 Inventory.INVENTORIES_PATH = "/usr/storage/inventories.csv"
 Inventory.FILENAME_START = "/usr/storage/invs/inv_"
@@ -20,22 +23,26 @@ Inventory.inventories = filehelp.loadCSV(Inventory.INVENTORIES_PATH)
 --- gets inventory data
 --- counts as a Location
 -- {id=?, nodeparent=?, x=?, y=?, z=?, side=?, space=?, isExternal=?, sizeMultiplier=1, file="?/?.csv"}
----@param id any
+---@param iid IID
 ---@return table
-function Inventory.getData(id)
-  return Inventory.inventories[id]
+function Inventory.getData(iid)
+  return Inventory.inventories[iid]
 end
 
-function Inventory.makeNewInvFilePath(id)
-  return Inventory.FILENAME_START .. id .. ".csv"
+function Inventory.makeNewInvFilePath(iid)
+  return Inventory.FILENAME_START .. iid .. ".csv"
 end
 
 function Inventory.saveInventories() -- save the inventories file
   filehelp.saveCSV(Inventory.inventories, Inventory.INVENTORIES_PATH)
 end
 
-function Inventory.set(id, contents, space) -- replaces old inventory data with contents. returns true if successful
-  local inv = Inventory.inventories[id]
+--- replaces old inventory data with contents. returns true if successful
+---@param iid IID
+---@param contents Contents
+---@param space integer|nil
+function Inventory.write(iid, contents, space)
+  local inv = Inventory.inventories[iid]
   if inv then
     if space and (space ~= inv.space) then
       inv.space = space
@@ -46,12 +53,16 @@ function Inventory.set(id, contents, space) -- replaces old inventory data with 
     filehelp.saveCSV(contents, file_path)
     return true
   else
-    error("no such inventory: " .. id)
+    error("no such inventory: " .. iid)
     return false
   end
 end
 
-function Inventory.get(id) -- returns inventory, with indices set to slots and the amount of taken slots. todo: cache.
+--- returns inventory, with indices set to slots and the amount of taken slots.
+--- is cached
+---@param id IID
+---@return Contents
+function Inventory.read(id)
   local inv = Inventory.inventories[id]
   if inv then
     local file_path = inv.file
@@ -67,11 +78,11 @@ function Inventory.get(id) -- returns inventory, with indices set to slots and t
 end
 
 --- shorthand for Inventory.get(id)[slot]
----@param id (number | string)
+---@param id IID
 ---@param slot number
----@return (table | nil) Item
+---@return Item
 function Inventory.getInSlot(id, slot)
-  local temp = Inventory.get(id)
+  local temp = Inventory.read(id)
   return temp[slot]
 end
 
@@ -85,11 +96,11 @@ end
 
 --- update the inventory  
 --- contents_new must be added only after contents_changed has been applied.
----@param id any
+---@param id IID
 ---@param contents_changed table table of tuples (slot,change), representing how much the amount of something has increased or decreased
 ---@param contents_new table like setInventory contents
 function Inventory.update(id, contents_changed, contents_new)
-  local storage = Inventory.get(id)
+  local storage = Inventory.read(id)
   for slot, change in pairs(contents_changed) do
     local newsize = Item.getsize(storage[slot]) + change
     if newsize == 0 then
@@ -108,19 +119,19 @@ function Inventory.update(id, contents_changed, contents_new)
     end
     storage[Item.getslot(cont)] = cont
   end
-  Inventory.set(id, storage)
+  Inventory.write(id, storage)
 end
 
 --- add or remove an amount of item from an inventory slot.
 --- todo: does not check max size, does not check inventory space
----@param id any
----@param item table Item
+---@param id IID
+---@param item Item
 ---@param slot number|nil -- by default takes from item
 ---@param size number|nil -- by default takes from item
 function Inventory.changeSingle(id, item, slot, size)
   slot = slot or Item.getslot(item)
   size = size or Item.getsize(item)
-  local storage = Inventory.get(id)
+  local storage = Inventory.read(id)
   local current = storage[slot]
   if current then
     if not Item.equals(item, current) then
@@ -142,11 +153,11 @@ function Inventory.changeSingle(id, item, slot, size)
       storage[slot] = Item.copy(item, slot, size)
     end
   end
-  Inventory.set(id, storage)
+  Inventory.write(id, storage)
 end
 
 --- call this to create a new inventory.
----@param id (number | string) = next()
+---@param id IID = next()
 ---@param nodeparent (number | string) nodeparent
 ---@param x number
 ---@param y number
@@ -179,10 +190,10 @@ Inventory.Lock.add_max = {}
 Inventory.Lock.remove_max = {}
 
 --- can this amount of item be added to this slot?
----@param id any
+---@param id IID
 ---@param slot number
 ---@param size number
----@param item table Item
+---@param item Item
 ---@return boolean|integer if true, how much at most
 function Inventory.Lock.canAdd(id, slot, size, item)
 
@@ -215,10 +226,10 @@ function Inventory.Lock.canAdd(id, slot, size, item)
   end
 end
 --- add to add_max, if it's valid.
----@param id any
+---@param id IID
 ---@param slot number
 ---@param size number
----@param added_item table Item
+---@param added_item Item
 ---@param precalculated_canAdd boolean|nil
 function Inventory.Lock.add_add_max(id, slot, size, added_item, precalculated_canAdd)
 
@@ -236,7 +247,7 @@ function Inventory.Lock.add_add_max(id, slot, size, added_item, precalculated_ca
 end
 
 --- can this amount of item be removed from this slot?
----@param id number
+---@param id IID
 ---@param slot integer
 ---@param size integer
 ---@param item Item
@@ -286,9 +297,9 @@ function Inventory.Lock.add_remove_max(id, slot, size, removed_item, precalculat
 end
 
 --- commits an amount of adding to a slot, making it final
----@param id any
----@param slot number
----@param size number
+---@param id IID
+---@param slot integer
+---@param size integer
 function Inventory.Lock.commitAdd(id, slot, size)
   local current_added = Inventory.Lock.add_max[Helper.makeIndex(id, slot)]
   local new_size = Item.getsize(current_added) - size
@@ -304,9 +315,9 @@ function Inventory.Lock.commitAdd(id, slot, size)
 end
 
 --- commits an amount of removing from a slot, making it final
----@param id any
----@param slot number
----@param size number
+---@param id IID
+---@param slot integer
+---@param size integer
 function Inventory.Lock.commitRemove(id, slot, size)
   local current_removed = Inventory.Lock.remove_max[Helper.makeIndex(id, slot)]
   local new_size = Item.getsize(current_removed) - size
@@ -322,10 +333,10 @@ function Inventory.Lock.commitRemove(id, slot, size)
 end
 
 --- starts adding an item to the slot.
----@param id (number | string)
----@param item table
----@param slot (nil | number)
----@param size (nil | number)
+---@param id IID
+---@param item Item
+---@param slot (nil | integer)
+---@param size (nil | integer)
 ---@return boolean success
 function Inventory.Lock.startAdd(id, item, slot, size, precalculated_can)
   -- todo: need to actually order a drone
@@ -336,10 +347,10 @@ function Inventory.Lock.startAdd(id, item, slot, size, precalculated_can)
 end
 
 --- starts removing an item from the slot.
----@param id (number | string)
----@param item table
----@param slot (nil | number)
----@param size (nil | number)
+---@param id IID
+---@param item Item
+---@param slot (nil | integer)
+---@param size (nil | integer)
 ---@return boolean success
 function Inventory.Lock.startRemove(id, item, slot, size, precalculated_can)
   slot = slot or Item.getslot(item)
@@ -353,7 +364,7 @@ end
 -- todo: currently does not support from and to. as such, those themselves are disabled.
 -- scan_data = {id=?,time_start=?,time_end=?,space=?,from=?,to=?,storage={[?]={...Item...}}}
 local function updateFromScan(scan_data)
-  Inventory.set(scan_data.id, Helper.mapWithKeys(scan_data.storage, Item.parseScanned), scan_data.space)
+  Inventory.write(scan_data.id, Helper.mapWithKeys(scan_data.storage, Item.parseScanned), scan_data.space)
 end
 
 -- automatically update inventories when scan data arrives
