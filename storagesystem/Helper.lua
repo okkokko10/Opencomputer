@@ -100,9 +100,12 @@ function Helper.find(target, condition)
   end
 end
 
---- gets the value and key that result in the smallest output of fun.
----@param target table
----@param fun fun(v:any,k:any):number
+--- gets the value and key that result in the smallest output of fun. if all return math.huge, then returns nil
+---@generic K,V
+---@param target table<K,V>
+---@param fun fun(v:V,k:K):number -- return math.huge to ignore
+---@return V|nil
+---@return K|nil
 function Helper.min(target, fun)
   local current_points = math.huge
   local current_value = nil

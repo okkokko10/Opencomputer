@@ -2,8 +2,12 @@ local serialization = require "serialization"
 
 local longmsg = require("longmsg_message")
 
+---@class DroneAction
+---@field type string
+
 local actions = {}
 
+---@return DroneAction
 function actions.move(dx, dy, dz)
   -- for st in steps do
   -- 	local dx,dy,dz = table.unpack(st)
@@ -17,6 +21,9 @@ function actions.move(dx, dy, dz)
   }
 end
 
+---@class DroneAction_moveto: DroneAction,Position
+
+---@return DroneAction_moveto
 function actions.moveto(x, y, z)
   return {
     type = "moveto",
@@ -26,6 +33,7 @@ function actions.moveto(x, y, z)
   }
 end
 
+---@return DroneAction
 function actions.scan(id, side, from, to) -- id: any side: number[, from: number, to: number]
   -- currently the other parts of the system does not support from or to
   return {
@@ -37,6 +45,7 @@ function actions.scan(id, side, from, to) -- id: any side: number[, from: number
   }
 end
 
+---@return DroneAction
 function actions.suck(side, own_slot, slot, size, iid)
   return {
     type = "suck",
@@ -47,6 +56,7 @@ function actions.suck(side, own_slot, slot, size, iid)
     iid = iid -- inventory id metadata
   }
 end
+---@return DroneAction
 function actions.drop(side, own_slot, slot, size, iid)
   return {
     type = "drop",
@@ -58,6 +68,7 @@ function actions.drop(side, own_slot, slot, size, iid)
   }
 end
 
+---@return DroneAction
 function actions.suckall(side) -- sucks as many items as it can from an inventory. use on an external inventory
   return {
     type = "suckall",
@@ -69,6 +80,7 @@ end
 -- 	-- could be composed from suck and drop clientside.
 -- end
 
+---@return DroneAction
 function actions.execute(code)
   return {
     type = "execute",
@@ -76,6 +88,7 @@ function actions.execute(code)
   }
 end
 
+---@return DroneAction
 function actions.setWakeMessage(message, fuzzy) -- message: string[, fuzzy:boolean]
   return {
     type = "setWakeMessage",
@@ -83,12 +96,14 @@ function actions.setWakeMessage(message, fuzzy) -- message: string[, fuzzy:boole
     fuzzy = fuzzy
   }
 end
+---@return DroneAction
 function actions.shutdown(reboot)
   return {
     type = "shutdown",
     reboot = reboot
   }
 end
+---@return DroneAction
 function actions.beep(frequency, duration)
   return {
     type = "beep",
@@ -96,12 +111,14 @@ function actions.beep(frequency, duration)
     duration = duration
   }
 end
+---@return DroneAction
 function actions.status()
   return {
     type = "status"
   }
 end
 
+---@return DroneAction
 function actions.echo(message)
   return {
     type = "echo",
@@ -109,6 +126,7 @@ function actions.echo(message)
   }
 end
 
+---@return DroneAction
 function actions.updateposition(x, y, z) -- sets the drone's position tracker to these values
   return {
     type = "updateposition",
@@ -117,13 +135,22 @@ function actions.updateposition(x, y, z) -- sets the drone's position tracker to
     z = z
   }
 end
-
+--- send actions
+---@param address string
+---@param port integer
+---@param id any
+---@param ... DroneAction[]
 local function send(address, port, id, ...) -- address: string or nil, port: int or nil, id: string or number or nil, ...: actions
   id = id or math.random()
   local message = serialization.serialize({...})
   longmsg.actualmessage(address, port, "fetcher", id, message)
   return id, message
 end
+--- send actions
+---@param address string
+---@param port integer
+---@param id any
+---@param orders DroneAction[]
 local function sendTable(address, port, id, orders) -- address: string or nil, port: int or nil, id: string or number or nil, ...: actions
   id = id or math.random()
   local message = serialization.serialize(orders)

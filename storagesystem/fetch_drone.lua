@@ -1,4 +1,4 @@
-ver="0.1.1"
+ver="0.1.2"
 PORT=2400
 c=component
 modem=c.proxy(c.list("modem")())
@@ -6,6 +6,7 @@ d=c.proxy(c.list("drone")())
 ic=c.proxy(c.list("inventory_controller")())
 dba=c.list("database")()
 db=dba and c.proxy(dba)
+co=computer
 
 function unserialize(data)
 	return select(2,pcall(load("return "..data,"=data",nil,{math={huge=math.huge}})))
@@ -29,9 +30,10 @@ end
 x=0
 y=0
 z=0
-ofs = 0.1
+ofs=0.1
+vel=1
 function center() 
-	while d.getOffset()>ofs or d.getVelocity()>ofs do end
+	while d.getOffset()>ofs or d.getVelocity()>vel do end
 end
 
 a={}
@@ -59,13 +61,13 @@ function a.scan(o,noSend)
 	local first=math.min(o.from or 1, space)
 	local last=math.min(o.to or space, space)
 
-	local ts=computer.uptime()
+	local ts=co.uptime()
 	local st={}
 	for i=first, last do
 		l=db and ic.store(side,i,dba,1)
 		table.insert(st,stis(ic.getStackInSlot(side, i),i))
 	end
-	local te=computer.uptime()
+	local te=co.uptime()
 	local scd= "{id="..o.id..",time_start="..ts..",time_end="..te..",space="..space..",from="..first..",to="..last..",storage={" .. table.concat(st,",") .. "}" .. "}"
 	if not noSend then
 		longmsg("scan_data",scd)
@@ -102,10 +104,10 @@ function a.setWakeMessage(o)
 	if o.message then modem.setWakeMessage(o.message,o.fuzzy and true) end
 end
 function a.shutdown(o)
-	computer.shutdown(o.reboot)
+	co.shutdown(o.reboot)
 end
 
-bp=computer.beep
+bp=co.beep
 
 function a.beep(o)
 	bp(o.frequency,o.duration)
@@ -122,8 +124,8 @@ function ist()
 
 end
 function a.status(o,ovN,extra)
-	longmsg(ovN or "status","{"..ist()..",freeMemory="..computer.freeMemory()..",totalMemory="..computer.totalMemory()..
-	",energy="..computer.energy()..",maxEnergy="..computer.maxEnergy()..",uptime="..computer.uptime()..
+	longmsg(ovN or "status","{"..ist()..",freeMemory="..co.freeMemory()..",totalMemory="..co.totalMemory()..
+	",energy="..co.energy()..",maxEnergy="..co.maxEnergy()..",uptime="..co.uptime()..
 	",x="..x..",y="..y..",z="..z..",cmd_id="..(c_cmd_id or "nil")..",cmd_index="..(c_cmd_index or "nil")..
 	",offset="..d.getOffset()..
 	",extra="..(extra or "nil")..
@@ -164,7 +166,7 @@ function main()
 	modem.open(PORT)
 	a.status(nil,"wakeup")
 	while true do
-		local evt,l,r,p,d,first,id,commandlist=computer.pullSignal()
+		local evt,l,r,p,d,first,id,commandlist=co.pullSignal()
 		if evt=="modem_message" and first=="fetcher" then parse(id,unserialize(commandlist)) end
 	end
 end

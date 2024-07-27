@@ -5,8 +5,17 @@ local Nodes = require "navigation_nodes"
 -- class for locations connected to a navigation node. a node also happens to be a Location.
 local Location = {}
 
+---@class Position 
+---@field x number
+---@field y number
+---@field z number
+
+---@class Location: Position
+---@field nodeparent NodeID
+
 --- shorthand for fetch_api.actions.moveto
----@param self table Location
+---@param self Location
+---@return DroneAction_moveto
 function Location.moveto(self)
   return {
     type = "moveto",
@@ -16,15 +25,18 @@ function Location.moveto(self)
   }
 
 end
+--- do self and other have the same x, y and z attributes? 
+---@param self Position|nil
+---@param other Position|nil
 function Location.equals(self, other)
   return self and other and self.x == other.x and self.y == other.y and self.z == other.z
 
 end
 
 --- returns list of moveto commands to move from Location self to Location other
----@param self table Location
----@param other table Location
----@return table|nil
+---@param self Location
+---@param other Location
+---@return DroneAction_moveto[]|nil
 function Location.pathfind(self, other)
   -- might repeat positions at the start and end
   local pathids = Nodes.pathbetween(self.nodeid or Nodes.parent(self), other.nodeid or Nodes.parent(other))
@@ -44,6 +56,7 @@ end
 --- returns amount of nodes between self and other. returns math.huge if they are disconnected
 ---@param self Location
 ---@param other Location
+---@return number
 function Location.pathDistance(self, other)
   local path = Location.pathfind(self, other)
   return path and #path or math.huge
@@ -51,9 +64,9 @@ function Location.pathDistance(self, other)
 end
 
 --- modifies target: copies location data of base to target. leave nil to get a new copy
----@param base table Location
----@param target table|nil Location
----@return table target
+---@param base Location
+---@param target? Location
+---@return Location target
 function Location.copy(base, target)
   target = target or {}
   target.nodeparent = Nodes.parent(base)

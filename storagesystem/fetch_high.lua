@@ -14,12 +14,18 @@ local longmsg = require "longmsg_message"
 -- only send one request to one drone.
 -- status request to all drones
 
+---@class Drone: Location, table
+---@field address string
+---@field business any|nil
+---@field status table|nil
+---last_node, x,y,z tell the location the drone will be at the end of its latest accepted instruction 
+---{address=, business:(order)=, nodeparent=, x=, y=, z=, status=(drone's latest status report)}
+
 local Drones = {}
 
 Drones.DRONES_PATH = "/usr/storage/drones.csv"
 
---- [address]: {address=, business:(order)=, nodeparent=, x=, y=, z=, status=(drone's latest status report)}
----last_node, x,y,z tell the location the drone will be at the end of its latest accepted instruction 
+---@type table<string,Drone> --- [address]: {address=, business:(order)=, nodeparent=, x=, y=, z=, status=(drone's latest status report)}
 Drones.drones = filehelp.loadCSV(Drones.DRONES_PATH, "address")
 -- {
 --   address=,
@@ -120,7 +126,7 @@ function Drones.setBusy(address)
   Drones.drones[address].business = true
 end
 
---- pushes an drone_freed event
+--- pushes a drone_freed event
 ---@param address string
 function Drones.setFree(address)
   Drones.drones[address].business = nil
@@ -133,6 +139,7 @@ end
 
 --- gets a drone that is not busy
 ---@param location Location|nil prioritizes drones close to this location
+---@return Drone|nil
 function Drones.getFreeDrone(location)
   local temp = Helper.min(Drones.drones, function(drone)
     if drone.business then
