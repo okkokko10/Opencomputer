@@ -313,11 +313,11 @@ end
 ---@param slot (nil | number)
 ---@param size (nil | number)
 ---@return boolean success
-function Inventory.Lock.startAdd(id, item, slot, size)
+function Inventory.Lock.startAdd(id, item, slot, size, precalculated_can)
   -- todo: need to actually order a drone
   slot = slot or Item.getslot(item)
   size = size or Item.getsize(item)
-  return Inventory.Lock.add_add_max(id, slot, size, item)
+  return Inventory.Lock.add_add_max(id, slot, size, item, precalculated_can)
 
 end
 
@@ -327,10 +327,10 @@ end
 ---@param slot (nil | number)
 ---@param size (nil | number)
 ---@return boolean success
-function Inventory.Lock.startRemove(id, item, slot, size)
+function Inventory.Lock.startRemove(id, item, slot, size, precalculated_can)
   slot = slot or Item.getslot(item)
   size = size or Item.getsize(item)
-  return Inventory.Lock.add_remove_max(id, slot, size, item)
+  return Inventory.Lock.add_remove_max(id, slot, size, item, precalculated_can)
 
 end
 

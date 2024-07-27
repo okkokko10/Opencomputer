@@ -4,6 +4,7 @@ local Nodes = require "navigation_nodes"
 local Drones = require "fetch_high"
 local Item = require "Item"
 local DroneInstruction = require "DroneInstruction"
+local Recipe = require "Recipe"
 
 local InventoryHigh = {}
 
@@ -60,8 +61,75 @@ function InventoryHigh.scanAll()
   end
 end
 
---- takes an item and 
-function InventoryHigh.move(item)
+--- takes an item from one inventory slot to another
+---@param from_iid number
+---@param from_slot number
+---@param to_iid number
+---@param to_slot number
+---@param size number
+---@param item table Item
+---@param finish_listener fun() is called when the item has been confirmed to be moved
+function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item, finish_listener)
+  if not ti.Lock.canRemove(from_iid, from_slot, size, item) then
+    return false, "can't remove"
+  elseif not ti.Lock.canAdd(to_iid, to_slot, size, item) then
+    return false, "can't add"
+  end
+  ti.Lock.startRemove(from_iid, item, from_slot, size)
+  ti.Lock.startAdd(to_iid, item, to_slot, size)
+  DroneInstruction.queueExecute(DroneInstruction.join2(DroneInstruction.suck(from_iid, from_slot, 1, size),
+    DroneInstruction.drop(to_iid, to_slot, 1, size)), function()
+    ti.Lock.commitRemove(from_iid, from_slot, size)
+    ti.Lock.commitAdd(to_iid, to_slot, size)
+    if finish_listener then
+      finish_listener()
+    end
+  end)
+  return true
+
+end
+
+-- when a filter is added to, it should compare the old filtered, because adding to a filter can only remove items
+
+local function filterItem(item, filterstring)
+  for str in Helper.splitString(filterstring, " ") do
+    if str[1] == "@" then
+      if not string.find(Item.getMod(item), string.sub(str, 2)) then
+        return false
+      end
+    else
+      if not string.find(Item.getlabel(item), str) then
+        return false
+      end
+    end
+  end
+  return true
+end
+
+--- how many items can be crafted
+--- todo
+---@param item any
+function InventoryHigh.amountCraftable(item)
+  Recipe.getRecipe(item)
+end
+
+-- todo
+function InventoryHigh.Craftable(item, size, allItems)
+  local this_index = Item.makeIndex(item)
+
+  local expended = {
+    [this_index] = (allItems[this_index].size + size)
+  }
+  local generated = {}
+  local recipe = Recipe.getRecipe(item)
+  for k, v in pairs(expended) do
+
+  end
+  local times = math.ceil(size / Item.getsize(recipe.outputItem))
+  for i = 1, #recipe.needed do
+    local ite = recipe.needed[i]
+    InventoryHigh.Craftable(ite, Item.getsize(ite) * times, allItems, expended, generated)
+  end
 
 end
 
