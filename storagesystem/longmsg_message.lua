@@ -6,8 +6,9 @@ local longmsg = {}
 
 local event = require "event"
 local component = require "component"
+local filehelp = require("filehelp")
 
-local config = require("filehelp").loadtable("/usr/cfgs/longmsg_message.cfg", true)
+local config = filehelp.loadtable("/usr/cfgs/longmsg_message.cfg", true)
 
 longmsg.default_address = config.default_address
 

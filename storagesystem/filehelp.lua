@@ -113,8 +113,8 @@ function filehelp.loadf(filename, trulyLoad)
   return cached
 end
 
-function filehelp.loadtable(filename, trulyLoad)
-  return serialization.unserialize(table.concat(filehelp.loadf(filename, trulyLoad), "\n"))
+function filehelp.loadtable(filename, noCache)
+  return serialization.unserialize(table.concat(filehelp.loadf(filename, noCache), "\n"))
 end
 
 --- commits cached changes to files.

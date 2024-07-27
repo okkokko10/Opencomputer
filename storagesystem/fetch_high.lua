@@ -131,21 +131,29 @@ function Drones.isFree(address)
   return not Drones.drones[address].business
 end
 
-function Drones.getFreeDrone()
-  local temp = Helper.find(Drones.drones, function(drone)
-    return not drone.business
+--- gets a drone that is not busy
+---@param location Location|nil prioritizes drones close to this location
+function Drones.getFreeDrone(location)
+  local temp = Helper.min(Drones.drones, function(drone)
+    if drone.business then
+      return math.huge
+    end
+    if not location then
+      return 0
+    end
+    return Location.pathDistance(drone, location)
   end)
   return temp and temp.address
 end
 
-function Drones.scan(address, id)
-  local inv_data = ti.getData(id)
-  local drone = Drones.drones[address]
-  local motions = Location.pathfind(drone, inv_data)
-  motions[#motions + 1] = api.actions.scan(id, inv_data.side)
-  Location.copy(inv_data, drone)
-  return api.sendTable(address, nil, nil, (motions))
-end
+-- function Drones.scan(address, id)
+--   local inv_data = ti.getData(id)
+--   local drone = Drones.drones[address]
+--   local motions = Location.pathfind(drone, inv_data)
+--   motions[#motions + 1] = api.actions.scan(id, inv_data.side)
+--   Location.copy(inv_data, drone)
+--   return api.sendTable(address, nil, nil, (motions))
+-- end
 
 function Drones.registerNearby()
   api.send(nil, nil, nil, api.actions.echo("register fetcher"))

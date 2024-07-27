@@ -110,8 +110,9 @@ function DroneInstruction.execute(instruction, drone_address, finish_listener)
   Drones.setBusy(drone_address)
   local instruction_id = math.random()
   local finish_message = "fetcher finish " .. instruction_id
-  local final = DroneInstruction.movefrom(instruction, Drones.drones[drone_address])
-  final = DroneInstruction.thenEcho(final, finish_message)
+  local final = DroneInstruction.movefrom(DroneInstruction.thenEcho(instruction, finish_message),
+    Drones.drones[drone_address])
+
   -- final = DroneInstruction.separate(final, 0.1)
 
   Location.copy(final.finish_location, Drones.drones[drone_address])
