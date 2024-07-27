@@ -15,16 +15,16 @@ function InventoryHigh.allItems()
   local space = 0
   local space_taken = 0
   local itemcounter = 1
-  for id, inventory in pairs(ti.inventories) do
-    local items, taken_slots = ti.get(id)
-    space = space + ti.getSpace(id)
-    space_taken = space_taken + taken_slots
-    if not inventory.isExternal then
+  for iid, inventoryData in pairs(ti.inventories) do
+    if not inventoryData.isExternal then
+      local items, close = ti.read(iid)
+      space = space + ti.getSpace(iid)
       for slot, item in pairs(items) do
+        space_taken = space_taken + 1
         local index = Item.makeIndex(item)
         local current = all_items[index]
         local size = Item.getsize(item)
-        local position_info = {id, slot, size}
+        local position_info = {iid, slot, size}
         if current then
           Item.setsize(current, Item.getsize(current) + size)
           table.insert(current.foundAt, position_info)
@@ -35,6 +35,7 @@ function InventoryHigh.allItems()
           copy.foundAt = {position_info}
         end
       end
+      close()
     end
   end
   return all_items, space, space_taken

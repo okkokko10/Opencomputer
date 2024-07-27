@@ -10,7 +10,7 @@ local filehelp = require "filehelp"
 
 local Inventory = {}
 
----@alias Contents table
+---@alias Contents Item[]
 ---@alias IID number|string
 
 Inventory.Item = Item
@@ -62,18 +62,25 @@ end
 --- is cached
 ---@param id IID
 ---@return Contents
+---@return fun(write:boolean|nil):nil close(write) -- call this when closing. write is required to be true if the contents have been modified. not doing so is undefined 
+---@return integer space taken
 function Inventory.read(id)
   local inv = Inventory.inventories[id]
   if inv then
     local file_path = inv.file
     local spacetaken = 0
-    return Helper.mapWithKeys(filehelp.loadf(file_path), function(v) -- todo: replace with filehelp.loadCSV
+    local contents = Helper.mapWithKeys(filehelp.loadf(file_path), function(v) -- todo: replace with filehelp.loadCSV
       local t = serialization.unserialize(v)
       if t then
         spacetaken = spacetaken + 1
         return t, Item.getslot(t)
       end
-    end), spacetaken
+    end)
+    return contents, function(write)
+      if write then
+        Inventory.write(id, contents)
+      end
+    end, spacetaken
   end
 end
 
@@ -82,8 +89,10 @@ end
 ---@param slot number
 ---@return Item
 function Inventory.getInSlot(id, slot)
-  local temp = Inventory.read(id)
-  return temp[slot]
+  local contents, close = Inventory.read(id)
+  local temp = contents[slot]
+  close()
+  return temp
 end
 
 function Inventory.getSizeMultiplier(id)
@@ -100,7 +109,7 @@ end
 ---@param contents_changed table table of tuples (slot,change), representing how much the amount of something has increased or decreased
 ---@param contents_new table like setInventory contents
 function Inventory.update(id, contents_changed, contents_new)
-  local storage = Inventory.read(id)
+  local storage, close = Inventory.read(id)
   for slot, change in pairs(contents_changed) do
     local newsize = Item.getsize(storage[slot]) + change
     if newsize == 0 then
@@ -119,7 +128,7 @@ function Inventory.update(id, contents_changed, contents_new)
     end
     storage[Item.getslot(cont)] = cont
   end
-  Inventory.write(id, storage)
+  close(true)
 end
 
 --- add or remove an amount of item from an inventory slot.
@@ -131,10 +140,11 @@ end
 function Inventory.changeSingle(id, item, slot, size)
   slot = slot or Item.getslot(item)
   size = size or Item.getsize(item)
-  local storage = Inventory.read(id)
+  local storage, close = Inventory.read(id)
   local current = storage[slot]
   if current then
     if not Item.equals(item, current) then
+      close()
       error("added item incompatible with current item")
     end
     local current_size = Item.getsize(current)
@@ -142,18 +152,20 @@ function Inventory.changeSingle(id, item, slot, size)
     if new_size == 0 then
       storage[slot] = nil
     elseif new_size < 0 then
+      close()
       error("removing below zero")
     else
       Item.setsize(current, new_size)
     end
   else
     if size < 0 then
+      close()
       error("removing below zero")
     elseif size > 0 then
       storage[slot] = Item.copy(item, slot, size)
     end
   end
-  Inventory.write(id, storage)
+  close(true)
 end
 
 --- call this to create a new inventory.
