@@ -7,6 +7,7 @@ local Nodes = require "navigation_nodes"
 local ti = require("trackinventories")
 local Location = require "Location"
 local Drones = require "fetch_high"
+local longmsg = require "longmsg_message"
 
 local DroneInstruction = {}
 
@@ -156,7 +157,7 @@ function DroneInstruction.execute(self, drone_address, finish_listener)
 
   Location.copy(final.finish_location, Drones.drones[drone_address])
 
-  event.listen("longmsg_message", function(e, localAddress, remoteAddress, port, distance, name, message)
+  longmsg.listen(function(e, localAddress, remoteAddress, port, distance, name, message)
     if remoteAddress == drone_address and name == "echo" and message == finish_message then
       Drones.setFree(drone_address)
       if finish_listener then
@@ -175,14 +176,10 @@ end
 function DroneInstruction.queueExecute(self, finish_listener)
   local f = function(address)
     DroneInstruction.execute(self, address, finish_listener)
-    return false
+    return true
   end
-  local addr = Drones.getFreeDrone(self.start_location)
-  if addr then
-    f(addr)
-  else
-    event.listen("drone_freed", f) -- todo: make a function of Drones for this
-  end
+  Drones.queue(f, self.start_location)
+
 end
 
 return DroneInstruction

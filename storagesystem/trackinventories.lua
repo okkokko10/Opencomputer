@@ -4,6 +4,7 @@ local event = require "event"
 local Helper = require "Helper"
 local Item = require "Item"
 local filehelp = require "filehelp"
+local longmsg = require "longmsg_message"
 
 -- local args, options = shell.parse(...)
 -- shell.resolve(args[1])
@@ -385,12 +386,11 @@ local function scan_data_listener(e, localAddress, remoteAddress, port, distance
     return
   end
   local scan_data = serialization.unserialize(message)
-  -- event.push("scan_data_message",scan_data)
   updateFromScan(scan_data)
 end
 
 local function startListening()
-  return event.listen("longmsg_message", scan_data_listener)
+  return longmsg.listen(scan_data_listener)
 end
 local cancelvalue = startListening()
 

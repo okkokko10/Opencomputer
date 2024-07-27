@@ -39,6 +39,14 @@ Drones.drones = filehelp.loadCSV(Drones.DRONES_PATH, "address")
 --   status = {}
 -- }
 
+--- gets the drone with this address
+---@param address string
+---@return Drone
+function Drones.get(address)
+  return Drones.drones[address]
+
+end
+
 function Drones.save()
   filehelp.saveCSV(Drones.drones, Drones.DRONES_PATH)
 end
@@ -111,7 +119,7 @@ local function drone_listener(e, localAddress, remoteAddress, port, distance, na
 
 end
 
-event.listen("longmsg_message", drone_listener)
+longmsg.listen(drone_listener)
 
 function Drones.addDrone(address, nodeparent, x, y, z)
   Drones.drones[address] = {
@@ -124,13 +132,6 @@ function Drones.addDrone(address, nodeparent, x, y, z)
 end
 function Drones.setBusy(address)
   Drones.drones[address].business = true
-end
-
---- pushes a drone_freed event
----@param address string
-function Drones.setFree(address)
-  Drones.drones[address].business = nil
-  event.push("drone_freed", address)
 end
 
 function Drones.isFree(address)
@@ -152,6 +153,44 @@ function Drones.getFreeDrone(location)
   end)
   return temp and temp.address
 end
+
+--- pushes a drone_freed event
+---@param address string
+function Drones.setFree(address)
+  Drones.drones[address].business = nil
+  event.push("drone_freed", address)
+end
+
+Drones.in_queue = {}
+
+--- callback is called once when a drone becomes free, or immediately if there already is a free drone
+---@param callback fun(address:string):boolean return true to consume, false to try later with some other drone
+---@param location? Location 
+function Drones.queue(callback, location)
+
+  local addr = Drones.getFreeDrone(location) -- todo: this is a race condition
+  if addr then
+    callback(addr)
+  else
+    table.insert(Drones.in_queue, {callback, location})
+  end
+end
+
+function Drones.when_freed(e, address)
+  local drone = Drones.get(address)
+  for k, v in pairs(Drones.in_queue) do
+    local callback, location = table.unpack(v)
+    if Location.pathDistance(location, drone) then
+      if callback(address) or not Drones.isFree(address) then
+        Drones.in_queue[k] = nil
+        return
+      end
+    end
+
+  end
+
+end
+event.listen("drone_freed", Drones.when_freed)
 
 -- function Drones.scan(address, id)
 --   local inv_data = ti.getData(id)

@@ -132,6 +132,12 @@ function longmsg.getSenderHistory()
   return longmsg.senderHistory
 end
 
+--- same as event.listen("longmsg_message",callback)
+---@param callback fun(e, localAddress, remoteAddress, port, distance, name, message)
+function longmsg.listen(callback)
+  return event.listen("longmsg_message", callback)
+end
+
 if not longmsg_INITIALIZED then -- global
   event.listen("modem_message", receivemessage)
   longmsg_INITIALIZED = true
