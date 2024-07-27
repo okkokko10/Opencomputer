@@ -71,7 +71,8 @@ end
 ---@param slot number
 ---@return (table | nil) Item
 function Inventory.getInSlot(id, slot)
-  return Inventory.get(id)[1][slot]
+  local temp = Inventory.get(id)
+  return temp[slot]
 end
 
 function Inventory.getSizeMultiplier(id)
@@ -165,7 +166,7 @@ function Inventory.makeNew(id, nodeparent, x, y, z, side, isExternal, sizeMultip
     side = side,
     space = 0,
     isExternal = isExternal or false,
-    slotMultiplier = sizeMultiplier or 1,
+    sizeMultiplier = sizeMultiplier or 1,
     file = Inventory.makeNewInvFilePath(id)
   }
   return id
@@ -182,13 +183,14 @@ Inventory.Lock.remove_max = {}
 ---@param slot number
 ---@param size number
 ---@param item table Item
+---@return boolean|integer if true, how much at most
 function Inventory.Lock.canAdd(id, slot, size, item)
 
   local current_item = Inventory.getInSlot(id, slot)
   if current_item and not Item.equals(item, current_item) then
     return false
   end
-  local current_size = Item.getsize(current_item)
+  local current_size = current_item and Item.getsize(current_item) or 0
 
   ---@type table Item
   local current_added = Inventory.Lock.add_max[Helper.makeIndex(id, slot)]
@@ -203,9 +205,10 @@ function Inventory.Lock.canAdd(id, slot, size, item)
   end
 
   local sizeMult = Inventory.getSizeMultiplier(id)
-  if current_size + current_added_size + size <= Item.getmaxSize(item) * sizeMult then
+  local maxAddable = Item.getmaxSize(item) * sizeMult - current_size - current_added_size
+  if size <= maxAddable and maxAddable > 0 then
     -- the Item fits
-    return true
+    return maxAddable
   else
     -- the Item does not fit
     return false
@@ -233,10 +236,11 @@ function Inventory.Lock.add_add_max(id, slot, size, added_item, precalculated_ca
 end
 
 --- can this amount of item be removed from this slot?
----@param id any
----@param slot number
----@param size number
----@param item table Item
+---@param id number
+---@param slot integer
+---@param size integer
+---@param item Item
+---@return boolean|integer if true, how much at most
 function Inventory.Lock.canRemove(id, slot, size, item)
 
   local current_item = Inventory.getInSlot(id, slot)
@@ -256,9 +260,11 @@ function Inventory.Lock.canRemove(id, slot, size, item)
 
   local current_size = Item.getsize(current_item)
 
-  if current_removed_size + size <= current_size then
+  local maxRemovable = current_size - current_removed_size
+
+  if size <= maxRemovable and maxRemovable > 0 then
     -- the Item fits
-    return true
+    return maxRemovable
   else
     -- the Item does not fit
     return false
@@ -271,7 +277,7 @@ function Inventory.Lock.add_remove_max(id, slot, size, removed_item, precalculat
     if current_removed then
       Item.setsize(current_removed, Item.getsize(current_removed) + size)
     else
-      Inventory.Lock.remove_max[Helper.makeIndex(id, slot)] = Item.copy(item, slot, size)
+      Inventory.Lock.remove_max[Helper.makeIndex(id, slot)] = Item.copy(removed_item, slot, size)
     end
     return true
   else
@@ -289,7 +295,11 @@ function Inventory.Lock.commitAdd(id, slot, size)
   if new_size < 0 then
     error("committing more than possible: Inventory.Lock.commitAdd(" .. id .. ", " .. slot .. ", " .. size .. ")")
   end
-  Item.setsize(current_added, new_size)
+  if new_size == 0 then
+    Inventory.Lock.add_max[Helper.makeIndex(id, slot)] = nil
+  else
+    Item.setsize(current_added, new_size)
+  end
   Inventory.changeSingle(id, current_added, slot, size)
 end
 
@@ -298,12 +308,16 @@ end
 ---@param slot number
 ---@param size number
 function Inventory.Lock.commitRemove(id, slot, size)
-  local current_removed = Inventory.Lock.add_max[Helper.makeIndex(id, slot)]
+  local current_removed = Inventory.Lock.remove_max[Helper.makeIndex(id, slot)]
   local new_size = Item.getsize(current_removed) - size
   if new_size < 0 then
     error("committing more than possible: Inventory.Lock.commitRemove(" .. id .. ", " .. slot .. ", " .. size .. ")")
   end
-  Item.setsize(current_removed, new_size)
+  if new_size == 0 then
+    Inventory.Lock.remove_max[Helper.makeIndex(id, slot)] = nil
+  else
+    Item.setsize(current_removed, new_size)
+  end
   Inventory.changeSingle(id, current_removed, slot, -size)
 end
 

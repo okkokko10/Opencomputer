@@ -76,7 +76,7 @@ local function receiveEcho(address, message, distance)
     drone.y = y
     drone.z = z
     drone.nodeparent = closest.nodeid
-    api.send(address, nil, nil, api.actions.updateposition(x, y, z))
+    api.send(address, nil, nil, api.actions.updateposition(x, y, z), api.actions.execute("d.setStatusText(\"f\"..ver)"))
     Drones.setFree(address)
   end
 end
@@ -89,8 +89,9 @@ local function updateFromStatus(status, address, statusName)
   status.statusName = statusName
   drone.status = status
   if statusName == "wakeup" then
-    -- todo: send the drone its stored coordinates.
-    api.send(address, nil, nil, api.actions.updateposition(drone.x, drone.y, drone.z))
+    -- send the drone its stored coordinates.
+    api.send(address, nil, nil, api.actions.updateposition(drone.x, drone.y, drone.z),
+      api.actions.execute("d.setStatusText(\"f\"..ver)"))
   end
 end
 

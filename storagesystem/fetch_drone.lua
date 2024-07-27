@@ -1,3 +1,4 @@
+ver="0.1.1"
 PORT=2400
 c=component
 modem=c.proxy(c.list("modem")())
@@ -7,7 +8,6 @@ dba=c.list("database")()
 db=dba and c.proxy(dba)
 
 function unserialize(data)
-	checkArg(1,data,"string")
 	return select(2,pcall(load("return "..data,"=data",nil,{math={huge=math.huge}})))
 end
 function acm(...)
@@ -62,7 +62,7 @@ function a.scan(o,noSend)
 	local ts=computer.uptime()
 	local st={}
 	for i=first, last do
-		db and ic.store(side,i,dba,1)
+		l=db and ic.store(side,i,dba,1)
 		table.insert(st,stis(ic.getStackInSlot(side, i),i))
 	end
 	local te=computer.uptime()
@@ -115,7 +115,7 @@ function ist()
 	local space=d.inventorySize() or 0
 	local storage={}
 	for i=1, space do
-		db and ic.storeInternal(i,dba,1)
+		l=db and ic.storeInternal(i,dba,1)
 		table.insert(storage,stis(ic.getStackInInternalSlot(i),i))
 	end
 	return "space="..space..",storage={" .. table.concat(storage,",") .. "}"
@@ -127,7 +127,8 @@ function a.status(o,ovN,extra)
 	",x="..x..",y="..y..",z="..z..",cmd_id="..(c_cmd_id or "nil")..",cmd_index="..(c_cmd_index or "nil")..
 	",offset="..d.getOffset()..
 	",extra="..(extra or "nil")..
-	"}")
+	",ver=\""..ver..
+	"\"}")
 end
 
 function a.echo(o)

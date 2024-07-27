@@ -42,6 +42,7 @@ function actions.suck(side, own_slot, slot, size, iid)
     type = "suck",
     side = side,
     own_slot = own_slot,
+    slot = slot,
     size = size,
     iid = iid -- inventory id metadata
   }
@@ -51,6 +52,7 @@ function actions.drop(side, own_slot, slot, size, iid)
     type = "drop",
     side = side,
     own_slot = own_slot,
+    slot = slot,
     size = size,
     iid = iid -- inventory id metadata
   }

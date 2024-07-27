@@ -70,6 +70,14 @@ end
 ---@param item table Item
 ---@param finish_listener fun() is called when the item has been confirmed to be moved
 function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item, finish_listener)
+  item = item or ti.getInSlot(from_iid, from_slot)
+  if not item then
+    return false, "no item requested"
+  end
+  size = size or Item.getsize(item)
+  if not size or size == 0 then
+    return false, "0 items requested"
+  end
   if not ti.Lock.canRemove(from_iid, from_slot, size, item) then
     return false, "can't remove"
   elseif not ti.Lock.canAdd(to_iid, to_slot, size, item) then

@@ -3,6 +3,8 @@ local Helper = require "Helper"
 
 local Item = {}
 
+---@alias Item table
+
 -- function Item.strip(inp, slot)
 --   return {slot or 0, inp.size, inp.name, inp.damage, inp.label, inp.hasTag, inp.maxDamage, inp.maxSize}
 -- end
@@ -72,11 +74,11 @@ function Item.getUItem(self)
 end
 
 --- whether the items are the same, excluding slot and size
----@param a table|nil Item
----@param b table|nil Item
+---@param a Item|nil Item
+---@param b Item|nil Item
 ---@return boolean
 function Item.equals(a, b)
-  return Item.makeIndex(a) == Item.makeIndex(b)
+  return a and b and Item.makeIndex(a) == Item.makeIndex(b)
   -- return Item.getHash(a) == Item.getHash(b)
   -- if type(a) ~= "table" or type(b) ~= "table" then
   --   return false

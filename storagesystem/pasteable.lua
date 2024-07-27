@@ -27,3 +27,5 @@ droneaddr = next(fetch_high.drones)
 fetch_high.scan(droneaddr, 1)
 
 fhigh.Location.pathfind(fhigh.drones[droneaddr], ti.getData(1))
+
+inventoryhigh.move(1, 1, 2, 10, 3)
