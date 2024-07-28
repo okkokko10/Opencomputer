@@ -65,10 +65,10 @@ local function receiveEcho(address, message, distance)
       registering[address] = {distance}
       local ofs = 1 / (distance * distance + 100)
 
-      api.send(address, nil, nil, api.actions.execute("ofs=" .. ofs), api.actions.move(1, 0, 0),
+      api.send(address, nil, nil, api.actions.execute("ofs=" .. ofs .. ";vel=" .. ofs), api.actions.move(1, 0, 0),
         api.actions.echo("register fetcher x"), api.actions.move(-1, 1, 0), api.actions.echo("register fetcher y"),
         api.actions.move(0, -1, 1), api.actions.echo("register fetcher z"), api.actions.move(0, 0, -1),
-        api.actions.echo("register fetcher o"), api.actions.execute("ofs=0.1"))
+        api.actions.echo("register fetcher o"), api.actions.execute("ofs=0.1;vel=1"))
     end
   elseif message == "register fetcher x" then
     registering[address][2] = distance
