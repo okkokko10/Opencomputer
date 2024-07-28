@@ -48,7 +48,7 @@ function InventoryHigh.scanAllOne()
   end))
   local dron = Drones.getFreeDrone()
   if dron then
-    return true, DroneInstruction.execute(instr, dron)
+    return true, DroneInstruction.execute(instr, dron) -- todo deprecated
 
   end
 end

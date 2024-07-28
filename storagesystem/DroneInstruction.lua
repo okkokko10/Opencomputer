@@ -99,8 +99,25 @@ end
 function DroneInstruction.thenEcho(self, message)
   return DroneInstruction.thenDo(self, api.actions.echo(message))
 end
+
+--- add the DroneAction to the beginning
+---@param self DroneInstruction
+---@param action DroneAction
+---@return DroneInstruction
+function DroneInstruction.firstDo(self, action)
+  return DroneInstruction.make(self.start_location, self.finish_location, Helper.flatten({{action}, self.actions}))
+end
+--- echo the message at the beginning
+---@param self DroneInstruction
+---@param message string
+---@return DroneInstruction
+function DroneInstruction.firstEcho(self, message)
+  return DroneInstruction.firstDo(self, api.actions.echo(message))
+end
+
 --- do the instructions in order. motion from one's endpoint to another's start is added between
 ---@param instructions DroneInstruction[]
+---@return DroneInstruction
 function DroneInstruction.join(instructions)
 
   local actions = Helper.flatten({instructions[1].actions})
@@ -140,33 +157,36 @@ function DroneInstruction.separate(self, seconds)
 
 end
 
---- sets the drone to do the instruction.
+--- sets the drone to do the instruction. blocks, so call it in a thread.
 ---@param self DroneInstruction
 ---@param drone_address string
----@param finish_listener? fun() if set, is called when the drone reports having finished the instruction.
-function DroneInstruction.execute(self, drone_address, finish_listener)
-  if not Drones.isFree(drone_address) then
-    error("this drone is not free")
-  end
-  Drones.setBusy(drone_address)
+function DroneInstruction.execute(self, drone_address)
+  -- if not Drones.isFree(drone_address) then
+  --   error("this drone is not free")
+  -- end
+  -- Drones.setBusy(drone_address)
   local instruction_id = math.random()
   local finish_message = "fetcher finish " .. instruction_id
-  local final = DroneInstruction.movefrom(DroneInstruction.thenEcho(self, finish_message), Drones.drones[drone_address])
+  local start_message = "fetcher start " .. instruction_id
 
-  -- final = DroneInstruction.separate(final, 0.1)
+  local final = DroneInstruction.firstEcho(DroneInstruction.movefrom(DroneInstruction.thenEcho(self, finish_message),
+    Drones.drones[drone_address]), start_message)
 
-  Location.copy(final.finish_location, Drones.drones[drone_address])
+  Location.copy(final.finish_location, Drones.drones[drone_address]) -- update drone's location. todo: make dedicated method
 
-  longmsg.listen(function(e, localAddress, remoteAddress, port, distance, name, message)
-    if remoteAddress == drone_address and name == "echo" and message == finish_message then
-      Drones.setFree(drone_address)
-      if finish_listener then
-        finish_listener()
-      end
-      return false
-    end
-  end)
-  return api.sendTable(drone_address, nil, instruction_id, final.actions)
+  api.sendTable(drone_address, nil, instruction_id, final.actions) -- send the drone the instruction
+
+  Drones.pullEcho(drone_address, start_message)
+
+  ---- drone has confirmed instruction
+
+  Drones.pullEcho(drone_address, finish_message) -- wait until finish_message is received
+
+  ---- drone has finished instruction
+
+  -- Drones.setFree(drone_address)
+
+  return true
 
 end
 
@@ -175,7 +195,8 @@ end
 ---@param finish_listener? fun() if set, is called when the drone reports having finished the instruction.
 function DroneInstruction.queueExecute(self, finish_listener)
   local f = function(address)
-    DroneInstruction.execute(self, address, finish_listener)
+    DroneInstruction.execute(self, address)
+    finish_listener()
     return true
   end
   Drones.queue(f, self.start_location)

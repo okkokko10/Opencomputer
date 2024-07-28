@@ -10,6 +10,8 @@ local filehelp = require("filehelp")
 
 local config = filehelp.loadtable("/usr/cfgs/longmsg_message.cfg", true)
 
+---@alias Address string
+
 longmsg.default_address = config.default_address
 
 --- {x=,y=,z=}
@@ -138,9 +140,100 @@ function longmsg.listen(callback)
   return event.listen("longmsg_message", callback)
 end
 
-if not longmsg_INITIALIZED then -- global
+---@class LongMessage
+---@field localAddress Address
+---@field remoteAddress Address
+---@field port integer
+---@field distance number
+---@field name string
+---@field message string
+
+--- makes into a LongMessage
+---@param e string
+---@param localAddress Address
+---@param remoteAddress Address
+---@param port integer
+---@param distance number
+---@param name string
+---@param message string
+---@return LongMessage
+local function makeTable(e, localAddress, remoteAddress, port, distance, name, message)
+  if not e then
+    return nil
+  end
+  return {
+    localAddress = localAddress,
+    remoteAddress = remoteAddress,
+    port = port,
+    distance = distance,
+    name = name,
+    message = message
+  }
+end
+
+--- inverse of makeClass
+---@param longmessage LongMessage
+---@return string, Address?, Address?, integer?, number?, string?, string?
+local function tableToParams(longmessage)
+  longmessage = longmessage or {}
+  return "longmsg_message", longmessage.localAddress, longmessage.remoteAddress, longmessage.port, longmessage.distance,
+    longmessage.name, longmessage.message
+
+end
+--- sees if longmessage fits the filter. nil is any
+---@param longmessage LongMessage
+---@param ops LongMessage
+---@return boolean
+local function compareFilter(longmessage, ops)
+  for k, v in pairs(ops) do
+    -- if type(v) == "string" then
+    --   if not string.match(longmessage[k], v) then
+    --     return false
+    --   end
+    -- else
+    if longmessage[k] ~= v then
+      return false
+    end
+    -- end
+  end
+  return true
+
+end
+
+--- wraps a function that accepts LongMessage
+---@param func fun(longmessage: LongMessage)
+---@return fun(e, localAddress, remoteAddress, port, distance, name, message)
+local function wrapTableFunc(func)
+  return function(...)
+    return func(makeTable(...))
+  end
+end
+
+--- like longmsg.listen, but with a LongMessage as argument
+---@param callback fun(longmessage: LongMessage)
+function longmsg.listenTable(callback)
+  longmsg.listen(wrapTableFunc(callback))
+
+end
+
+--- todo
+--- like event.pullFiltered
+---@param filter fun(e, localAddress, remoteAddress, port, distance, name, message)
+function longmsg.pullFiltered(filter)
+  error("not implemented")
+end
+
+--- like event.pull
+---@param ops LongMessage filter
+---@param timeout? number seconds
+---@return LongMessage
+function longmsg.pullTable(ops, timeout)
+  return makeTable(event.pull(timeout, tableToParams(ops)))
+end
+
+if not LONGMSG_INITIALIZED then -- global
   event.listen("modem_message", receivemessage)
-  longmsg_INITIALIZED = true
+  LONGMSG_INITIALIZED = true
 end
 
 return longmsg

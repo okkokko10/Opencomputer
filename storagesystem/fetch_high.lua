@@ -8,6 +8,7 @@ local ti = require("trackinventories")
 local Location = require "Location"
 local filehelp = require "filehelp"
 local longmsg = require "longmsg_message"
+local thread = require("thread")
 
 -- set up listener for the return message
 -- buffer for requests while all drones are busy
@@ -140,69 +141,109 @@ end
 
 --- gets a drone that is not busy
 ---@param location Location|nil prioritizes drones close to this location
+---@param filter? fun(address:Address):boolean does a drone fit
 ---@return Drone|nil
-function Drones.getFreeDrone(location)
-  local temp = Helper.min(Drones.drones, function(drone)
-    if drone.business then
+function Drones.getFreeDrone(location, filter)
+  filter = filter or function()
+    return true
+  end
+  local temp = Helper.min(Drones.drones, function(drone, address)
+    if drone.business or not filter(address) then
       return math.huge
-    end
-    if not location then
+    elseif not location then
       return 0
+    else
+      return Location.pathDistance(drone, location)
     end
-    return Location.pathDistance(drone, location)
   end)
   return temp and temp.address
 end
 
---- pushes a drone_freed event
+--- sets a drone to be free. pushes a notification
 ---@param address string
 function Drones.setFree(address)
   Drones.drones[address].business = nil
-  event.push("drone_freed", address)
+  event.push("thread_drone freed", address)
 end
 
-Drones.in_queue = {}
+--- pulls an echo from the drone. blocks
+---@param address Address
+---@param message string
+---@param timeout? number seconds
+---@return LongMessage?
+function Drones.pullEcho(address, message, timeout)
+  return longmsg.pullTable({
+    remoteAddress = address,
+    name = "echo",
+    message = message
+  }, timeout)
+end
+
+--- handles Drones.queue
+local thread_drone = {}
+thread_drone.in_queue = {}
 
 --- callback is called once when a drone becomes free, or immediately if there already is a free drone
 ---@param callback fun(address:string):boolean return true to consume, false to try later with some other drone
 ---@param location? Location 
-function Drones.queue(callback, location)
+---@param filter fun(address:Address):boolean does a drone fit
+function Drones.queue(callback, location, filter)
 
-  local addr = Drones.getFreeDrone(location) -- todo: this is a race condition
-  if addr then
-    callback(addr)
-  else
-    table.insert(Drones.in_queue, {callback, location})
-  end
+  local i = #thread_drone.in_queue + 1
+  table.insert(thread_drone.in_queue, i, {callback, location, filter})
+  event.push("thread_drone queue", i) -- maybe make a custom method that allows sending functions
+
 end
 
-function Drones.when_freed(e, address)
+function thread_drone.call(callback, address)
+  thread.create(function()
+    Drones.setBusy(address)
+    callback(address)
+    Drones.setFree(address)
+  end)
+end
+
+function thread_drone.freed(address)
   local drone = Drones.get(address)
-  for k, v in pairs(Drones.in_queue) do
-    local callback, location = table.unpack(v)
-    if Location.pathDistance(location, drone) then
-      if callback(address) or not Drones.isFree(address) then
-        Drones.in_queue[k] = nil
-        return
-      end
+  for k, v in pairs(thread_drone.in_queue) do
+    local callback, location, filter = table.unpack(v)
+    if filter(address) and Location.pathfind(location, drone) then
+      thread_drone.in_queue[k] = nil
+      thread_drone.call(callback, address)
+      return
     end
-
   end
-
 end
-event.listen("drone_freed", Drones.when_freed)
 
--- function Drones.scan(address, id)
---   local inv_data = ti.getData(id)
---   local drone = Drones.drones[address]
---   local motions = Location.pathfind(drone, inv_data)
---   motions[#motions + 1] = api.actions.scan(id, inv_data.side)
---   Location.copy(inv_data, drone)
---   return api.sendTable(address, nil, nil, (motions))
--- end
+function thread_drone.queue(i)
+  local callback, location, filter = table.unpack(thread_drone.in_queue[i]) --- Drones.queue
+
+  local addr = Drones.getFreeDrone(location, filter)
+  if addr then
+    thread_drone.in_queue[i] = nil
+    thread_drone.call(callback, addr)
+  end
+end
+
+function thread_drone.main()
+  while true do
+    local pulled = {event.pull("thread_drone.*")} -- event.pullMultiple would also work
+    if pulled[1] == "thread_drone freed" then
+      local address = pulled[2]
+      thread_drone.freed(address)
+    elseif pulled[1] == "thread_drone queue" then
+      local i = pulled[2]
+      thread_drone.queue(i)
+    end
+  end
+end
+
+thread_drone.main_thread = thread.create(thread_drone.main)
+
+Drones.thread_drone = thread_drone
 
 function Drones.registerNearby()
-  api.send(nil, nil, nil, api.actions.echo("register fetcher"))
+  api.send(nil, nil, nil, api.actions.echo("register fetcher")) -- todo move from receiveEcho
 end
 
 return Drones

@@ -28,4 +28,6 @@ fetch_high.scan(droneaddr, 1)
 
 fhigh.Location.pathfind(fhigh.drones[droneaddr], ti.getData(1))
 
-inventoryhigh.move(1, 1, 2, 10, 3)
+ih.move(1, 1, 2, 10, 3)
+
+-- for k, v in pairs(ih.allItems()) do print(v.size,Item.getlabel(v)) end

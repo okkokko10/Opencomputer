@@ -176,3 +176,7 @@ Node(nodeid)( x, y, z, nodeparent FK)
 Inventory(iid)( side, space, isExternal, sizeMultiplier, file, nodeid FK)
 Item(itemid)(name, damage, label, hasTag, maxDamage, maxSize)
 ItemSlot(iid FK, slot)(itemid FK, size, future_max, future_min)
+
+
+
+a running DroneInstruction should be a thread.
