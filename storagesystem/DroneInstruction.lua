@@ -89,8 +89,8 @@ end
 ---@param self DroneInstruction
 ---@param action DroneAction
 ---@return DroneInstruction
-function DroneInstruction.thenDo(self, action)
-  return DroneInstruction.make(self.start_location, self.finish_location, Helper.flatten({self.actions, {action}}))
+function DroneInstruction.thenDo(self, ...)
+  return DroneInstruction.make(self.start_location, self.finish_location, Helper.flatten({self.actions, {...}}))
 end
 --- echo the message at the end
 ---@param self DroneInstruction
@@ -104,8 +104,8 @@ end
 ---@param self DroneInstruction
 ---@param action DroneAction
 ---@return DroneInstruction
-function DroneInstruction.firstDo(self, action)
-  return DroneInstruction.make(self.start_location, self.finish_location, Helper.flatten({{action}, self.actions}))
+function DroneInstruction.firstDo(self, ...)
+  return DroneInstruction.make(self.start_location, self.finish_location, Helper.flatten({{...}, self.actions}))
 end
 --- echo the message at the beginning
 ---@param self DroneInstruction
@@ -169,8 +169,9 @@ function DroneInstruction.execute(self, drone_address)
   local finish_message = "fetcher finish " .. instruction_id
   local start_message = "fetcher start " .. instruction_id
 
-  local final = DroneInstruction.firstEcho(DroneInstruction.movefrom(DroneInstruction.thenEcho(self, finish_message),
-    Drones.drones[drone_address]), start_message)
+  local final = DroneInstruction.firstDo(DroneInstruction.movefrom(
+    DroneInstruction.thenDo(self, api.actions.echo(finish_message), api.actions.changeColor(0xFFFFFF)),
+    Drones.drones[drone_address]), api.actions.echo(start_message), api.actions.changeColor(0x0F0F60))
 
   Location.copy(final.finish_location, Drones.drones[drone_address]) -- update drone's location. todo: make dedicated method
 

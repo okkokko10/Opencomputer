@@ -7,6 +7,7 @@ local longmsg = {}
 local event = require "event"
 local component = require "component"
 local filehelp = require("filehelp")
+local serialization = require "serialization"
 
 local config = filehelp.loadtable("/usr/cfgs/longmsg_message.cfg", true)
 
@@ -119,9 +120,13 @@ function longmsg.setupDebug(x, y, width, height, evt) -- sets a box of given dim
   local rx, ry = gpu.getResolution()
   width = width or rx - x
   height = height or ry - y
-  return event.listen(evt or "longmsg_message", function(e, localAddress, remoteAddress, port, distance, name, message)
-    local extra = "" .. e .. " " .. localAddress .. " " .. remoteAddress .. " " .. port .. " " .. distance .. " " ..
-                    name .. " "
+  return event.listen(evt or "longmsg_message", function(...)
+    -- local extra = "" .. e .. " " .. localAddress .. " " .. remoteAddress .. " " .. port .. " " .. distance .. " " ..
+    --                 name .. " "
+    local message = ({...})[7]
+    if evt then
+      message = serialization.serialize({...}, 30)
+    end
     local spl = helper.splitSized(message, width - 2) -- -2 for the borders
     for i = 1, math.min(#spl, height) do
       gpu.set(x, y + i - 1, "|" .. spl[i])

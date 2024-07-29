@@ -135,6 +135,13 @@ function actions.updateposition(x, y, z) -- sets the drone's position tracker to
     z = z
   }
 end
+
+--- change the color
+---@param rgb integer 0xRRGGBB
+function actions.changeColor(rgb)
+  return actions.execute("d.setLightColor(" .. rgb .. ")")
+end
+
 --- send actions
 ---@param address string
 ---@param port integer
@@ -158,8 +165,8 @@ local function sendTable(address, port, id, orders) -- address: string or nil, p
   return id, message
 end
 
-return {
-  actions = actions,
-  send = send,
-  sendTable = sendTable
-}
+local api = {}
+api.actions = actions
+api.send = send
+api.sendTable = sendTable
+return api

@@ -180,3 +180,5 @@ ItemSlot(iid FK, slot)(itemid FK, size, future_max, future_min)
 
 
 a running DroneInstruction should be a thread.
+
+each drone has a thread?
