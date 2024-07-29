@@ -9,6 +9,9 @@ Drones = require("fetch_high")
 
 longmsg.setupDebug(100, 20)
 
+longmsg.setupDebug(90, 10, nil, nil, "thread_drone freed")
+longmsg.setupDebug(80, 5, nil, nil, "thread_drone queue")
+
 droneaddr = next(fetch_high.drones)
 
 ih.scanAll()

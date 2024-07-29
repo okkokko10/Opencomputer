@@ -197,8 +197,9 @@ end
 function DroneInstruction.queueExecute(self, finish_listener)
   local f = function(address)
     DroneInstruction.execute(self, address)
-    finish_listener()
-    return true
+    if finish_listener then
+      finish_listener() -- todo: as a Future
+    end
   end
   Drones.queue(f, self.start_location)
 

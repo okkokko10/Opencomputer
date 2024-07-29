@@ -162,8 +162,7 @@ end
 --- sets a drone to be free. pushes a notification
 ---@param address string
 function Drones.setFree(address)
-  Drones.drones[address].business = nil
-  event.push("thread_drone freed", address)
+  event.push("thread_drone freed", address) -- todo: for some reason does not do anything.
 end
 
 --- pulls an echo from the drone. blocks
@@ -186,7 +185,7 @@ thread_drone.in_queue = {}
 --- callback is called once when a drone becomes free, or immediately if there already is a free drone
 ---@param callback fun(address:string):boolean return true to consume, false to try later with some other drone
 ---@param location? Location 
----@param filter fun(address:Address):boolean does a drone fit
+---@param filter? fun(address:Address):boolean does a drone fit
 function Drones.queue(callback, location, filter)
 
   local i = #thread_drone.in_queue + 1
@@ -204,10 +203,11 @@ function thread_drone.call(callback, address)
 end
 
 function thread_drone.freed(address)
+  Drones.drones[address].business = nil
   local drone = Drones.get(address)
   for k, v in pairs(thread_drone.in_queue) do
     local callback, location, filter = table.unpack(v)
-    if filter(address) and Location.pathfind(location, drone) then
+    if (not filter or filter(address)) and Location.pathfind(location, drone) then
       thread_drone.in_queue[k] = nil
       thread_drone.call(callback, address)
       return
