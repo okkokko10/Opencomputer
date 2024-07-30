@@ -9,12 +9,13 @@ local Location = require "Location"
 local Drones = require "fetch_high"
 local longmsg = require "longmsg_message"
 
-local DroneInstruction = {}
-
 ---@class DroneInstruction
 ---@field start_location Location
 ---@field finish_location Location
 ---@field actions DroneAction[]
+local DroneInstruction = {}
+
+DroneInstruction.__index = DroneInstruction
 
 --- makes a DroneInstruction
 ---@param start_location Location location that the instruction starts at
@@ -27,7 +28,7 @@ function DroneInstruction.make(start_location, finish_location, actions)
     finish_location = finish_location,
     actions = actions
   }
-  return temp
+  return setmetatable(temp, DroneInstruction)
 end
 
 --- makes an instruction that is at location but doesn't do anything
@@ -87,32 +88,32 @@ function DroneInstruction.drop(iid, slot, own_slot, size)
 end
 --- add the DroneAction to the end
 ---@param self DroneInstruction
----@param action DroneAction
+---@param actions DroneAction[]
 ---@return DroneInstruction
-function DroneInstruction.thenDo(self, ...)
-  return DroneInstruction.make(self.start_location, self.finish_location, Helper.flatten({self.actions, {...}}))
+function DroneInstruction.thenDo(self, actions)
+  return DroneInstruction.make(self.start_location, self.finish_location, Helper.flatten({self.actions, actions}))
 end
 --- echo the message at the end
 ---@param self DroneInstruction
 ---@param message string
 ---@return DroneInstruction
 function DroneInstruction.thenEcho(self, message)
-  return DroneInstruction.thenDo(self, api.actions.echo(message))
+  return DroneInstruction.thenDo(self, {api.actions.echo(message)})
 end
 
 --- add the DroneAction to the beginning
 ---@param self DroneInstruction
----@param action DroneAction
+---@param actions DroneAction[]
 ---@return DroneInstruction
-function DroneInstruction.firstDo(self, ...)
-  return DroneInstruction.make(self.start_location, self.finish_location, Helper.flatten({{...}, self.actions}))
+function DroneInstruction:firstDo(actions)
+  return DroneInstruction.make(self.start_location, self.finish_location, Helper.flatten({actions, self.actions}))
 end
 --- echo the message at the beginning
 ---@param self DroneInstruction
 ---@param message string
 ---@return DroneInstruction
 function DroneInstruction.firstEcho(self, message)
-  return DroneInstruction.firstDo(self, api.actions.echo(message))
+  return DroneInstruction.firstDo(self, {api.actions.echo(message)})
 end
 
 --- do the instructions in order. motion from one's endpoint to another's start is added between
@@ -160,7 +161,7 @@ end
 --- sets the drone to do the instruction. blocks, so call it in a thread.
 ---@param self DroneInstruction
 ---@param drone_address string
-function DroneInstruction.execute(self, drone_address)
+function DroneInstruction:execute(drone_address)
   -- if not Drones.isFree(drone_address) then
   --   error("this drone is not free")
   -- end
@@ -169,9 +170,9 @@ function DroneInstruction.execute(self, drone_address)
   local finish_message = "fetcher finish " .. instruction_id
   local start_message = "fetcher start " .. instruction_id
 
-  local final = DroneInstruction.firstDo(DroneInstruction.movefrom(
-    DroneInstruction.thenDo(self, api.actions.echo(finish_message), api.actions.changeColor(0xFFFFFF)),
-    Drones.drones[drone_address]), api.actions.echo(start_message), api.actions.changeColor(0x0F0F60))
+  local final = self:movefrom(Drones.drones[drone_address])
+    :firstDo{api.actions.echo(start_message), api.actions.changeColor(0x0F0F60)}
+    :thenDo{api.actions.echo(finish_message), api.actions.changeColor(0xFFFFFF)}
 
   Location.copy(final.finish_location, Drones.drones[drone_address]) -- update drone's location. todo: make dedicated method
 
@@ -194,9 +195,9 @@ end
 ---
 ---@param self DroneInstruction
 ---@param finish_listener? fun() if set, is called when the drone reports having finished the instruction.
-function DroneInstruction.queueExecute(self, finish_listener)
+function DroneInstruction:queueExecute(finish_listener)
   local f = function(address)
-    DroneInstruction.execute(self, address)
+    self:execute(address)
     if finish_listener then
       finish_listener() -- todo: as a Future
     end

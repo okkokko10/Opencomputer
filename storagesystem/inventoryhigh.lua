@@ -54,11 +54,11 @@ function InventoryHigh.scanAllOne()
 end
 
 function InventoryHigh.scanAll()
-  local instr = Helper.map(ti.inventories, function(inv_data)
-    return DroneInstruction.scan(inv_data.id)
-  end)
+  -- local instr = Helper.map(ti.inventories, function(inv_data)
+  --   return DroneInstruction.scan(inv_data.id)
+  -- end)
   for k, inv_data in pairs(ti.inventories) do
-    DroneInstruction.queueExecute(DroneInstruction.scan(inv_data.id))
+    DroneInstruction.scan(inv_data.id):queueExecute()
   end
 end
 
@@ -86,8 +86,8 @@ function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item, fi
   end
   ti.Lock.startRemove(from_iid, item, from_slot, size)
   ti.Lock.startAdd(to_iid, item, to_slot, size)
-  DroneInstruction.queueExecute(DroneInstruction.join2(DroneInstruction.suck(from_iid, from_slot, 1, size),
-    DroneInstruction.drop(to_iid, to_slot, 1, size)), function()
+  DroneInstruction.join2(DroneInstruction.suck(from_iid, from_slot, 1, size),
+    DroneInstruction.drop(to_iid, to_slot, 1, size)):queueExecute(function()
     ti.Lock.commitRemove(from_iid, from_slot, size)
     ti.Lock.commitAdd(to_iid, to_slot, size)
     if finish_listener then
