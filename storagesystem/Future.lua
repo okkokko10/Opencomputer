@@ -141,4 +141,42 @@ function Future:onFailure(func)
   end)
 end
 
+---
+--
+--
+
+--- a future that never succeeds on its own (unless timeout)
+--- use fulfilPromise to fulfil it
+---@param timeout? number seconds
+function Future.createPromise(timeout)
+  return Future.create(function()
+    os.sleep(timeout or math.huge)
+    error("promise timed out")
+  end)
+end
+
+--- meant for promises, makes it a success and sets the result to arguments
+---@vararg any
+---@return boolean if this is what completed the promise
+function Future:fulfilPromise(...)
+  return self:kill(true, ...)
+end
+
+--- meant for promises, makes it a failure and sets the error message
+---@param errormessage string
+---@return boolean if this is what completed the promise
+function Future:failPromise(errormessage)
+  checkArg(1, errormessage, "string")
+  return self:kill(false, errormessage)
+end
+
+--- meant for promises, sets outcome like pcall results. alias for Future:kill
+---@param success boolean
+---@vararg any
+---@return boolean if this is what completed the promise
+function Future:completePromise(success, ...)
+  checkArg(1, success, "boolean")
+  return self:kill(success, ...)
+end
+
 return Future
