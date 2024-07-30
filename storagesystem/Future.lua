@@ -15,10 +15,25 @@ local Future = {}
 
 Future.__index = Future
 
+
+function Future:__tostring()
+  if self.success == nil then
+    return "Incomplete"
+  elseif self.success == true then
+    local out = {}
+    for i = 2,#self.results do
+      out[i-1] = tostring(self.results[i])
+    end
+    return "Success(" .. table.concat(out,", ") .. ")"
+  end
+  return "Failure(".. tostring(self.results[2]) .. ")"
+end
+
+
 --- creates a new future.
 ---@generic T any
----@param func fun():T
----@return Future<T>
+---@param func fun():T?
+---@return Future
 function Future.create(func)
   local fut = setmetatable({}, Future)
   fut.t = thread.create(function()
@@ -105,7 +120,7 @@ end
 --- eventually calls the function with this future's success and result
 ---@generic T2 any
 ---@generic T any
----@param func fun(success:boolean|nil,...:T):T2 -- takes the result of self:awaitProtected(timeout) as input
+---@param func fun(success:boolean|nil,...:T):T2? -- takes the result of self:awaitProtected(timeout) as input
 ---@param timeout? number seconds -- starting from when this is registered
 ---@return Future<T2>
 function Future:onComplete(func, timeout)
@@ -118,7 +133,7 @@ end
 --- if self fails, the resulting future automatically fails, which may be sent to further onFailure
 ---@generic T2 any
 ---@generic T any
----@param func fun(...:T):T2 -- takes the result of self:
+---@param func fun(...:T):T2? -- takes the result of self:
 ---@return Future<T2>
 function Future:onSuccess(func)
   return Future.create(function()
@@ -134,7 +149,7 @@ end
 --- eventually calls the function with this future's error if it fails
 --- if self succeeds, the resulting future automatically fails, which may be sent to further onFailure
 ---@generic T2 any
----@param func fun(errormessage:string):T2
+---@param func fun(errormessage:string):T2?
 ---@return Future<T2>
 function Future:onFailure(func)
   return Future.create(function()
@@ -149,11 +164,12 @@ end
 
 ---
 --
---
+---@alias Promise Future
 
 --- a future that never succeeds on its own (unless timeout)
 --- use fulfilPromise to fulfil it
 ---@param timeout? number seconds
+---@return Promise
 function Future.createPromise(timeout)
   return Future.create(function()
     os.sleep(timeout or math.huge)
@@ -184,5 +200,43 @@ function Future:completePromise(success, ...)
   checkArg(1, success, "boolean")
   return self:kill(success, ...)
 end
+
+--- sets the promise to copy this future
+---@param future Future
+function Future:completeWith(future)
+  future:onComplete(function(success,...)
+    return self:completePromise(success,...)
+  end)
+end
+
+---creates a dummy future that instantly completes with args
+---@generic T any
+---@param success boolean
+---@param ... T|string
+---@return Future<T>
+function Future.createInstant(success,...)
+  local fut = setmetatable({}, InstantFuture)
+  fut.results = {success,...}
+  fut.success = success
+  return fut
+  
+end
+
+
+--- a subclass of Future that instantly returns values without creating a thread
+---@class InstantFuture: Future
+local InstantFuture = setmetatable({},Future)
+InstantFuture.__index = InstantFuture
+
+function InstantFuture:kill(...)
+  return false
+end
+function InstantFuture:join(...)
+  return true
+end
+
+
+
+
 
 return Future

@@ -5,13 +5,14 @@ local Drones = require "fetch_high"
 local Item = require "Item"
 local DroneInstruction = require "DroneInstruction"
 local Recipe = require "Recipe"
+local Future = require "Future"
 
 local InventoryHigh = {}
 
 ---@class ItemFoundAt: Item
 ---@field foundAt table
 
--- returns a table of all items, with slot set to 1, size being a sum of all of that item, 
+-- returns a table of all items, with slot set to 1, size being a sum of all of that item,
 -- and with an extra index: foundAt, which tracks positions that the item is found at and how many there are there
 function InventoryHigh.allItems()
   ---@type table<string,ItemFoundAt>
@@ -44,17 +45,21 @@ function InventoryHigh.allItems()
     end
   end
   return all_items, space, space_taken
-
 end
 
 function InventoryHigh.scanAllOne()
-  local instr = DroneInstruction.join(Helper.map(ti.inventories, function(inv_data)
-    return DroneInstruction.scan(inv_data.id)
-  end))
+  local instr =
+    DroneInstruction.join(
+    Helper.map(
+      ti.inventories,
+      function(inv_data)
+        return DroneInstruction.scan(inv_data.id)
+      end
+    )
+  )
   local droneAddr = Drones.getFreeDrone()
   if droneAddr then
     return true, DroneInstruction.execute(instr, droneAddr) -- todo deprecated
-
   end
 end
 
@@ -74,33 +79,37 @@ end
 ---@param to_slot number
 ---@param size number
 ---@param item? Item
----@param finish_listener? fun() is called when the item has been confirmed to be moved
-function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item, finish_listener)
+---@return Future completion
+function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item)
   item = item or ti.getInSlot(from_iid, from_slot)
   if not item then
-    return false, "no item requested"
+    return Future.createInstant(false, "no item requested")
   end
   size = size or Item.getsize(item)
   if not size or size == 0 then
-    return false, "0 items requested"
+    return Future.createInstant(false, "0 items requested")
   end
   if not ti.Lock.canRemove(from_iid, from_slot, size, item) then
-    return false, "can't remove"
+    return Future.createInstant(false, "can't remove")
   elseif not ti.Lock.canAdd(to_iid, to_slot, size, item) then
-    return false, "can't add"
+    return Future.createInstant(false, "can't add")
   end
   ti.Lock.startRemove(from_iid, item, from_slot, size)
   ti.Lock.startAdd(to_iid, item, to_slot, size)
-  DroneInstruction.join2(DroneInstruction.suck(from_iid, from_slot, 1, size),
-    DroneInstruction.drop(to_iid, to_slot, 1, size)):queueExecute(function()
-    ti.Lock.commitRemove(from_iid, from_slot, size)
-    ti.Lock.commitAdd(to_iid, to_slot, size)
-    if finish_listener then
-      finish_listener()
+  local work = DroneInstruction.join2(
+    DroneInstruction.suck(from_iid, from_slot, 1, size),
+    DroneInstruction.drop(to_iid, to_slot, 1, size)
+  ):queueExecute()
+  local finish = work:onSuccess(
+    function()
+      ti.Lock.commitRemove(from_iid, from_slot, size)
+      ti.Lock.commitAdd(to_iid, to_slot, size)
+      -- todo: if a failure is detected, undo the action instead. 
+      -- todo: program drones to do the completed instructions in reverse when they encounter an exception, then they echo failure.
+      return true
     end
-  end)
-  return true
-
+  )
+  return finish
 end
 
 -- when a filter is added to, it should compare the old filtered, because adding to a filter can only remove items

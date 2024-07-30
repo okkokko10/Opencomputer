@@ -194,15 +194,11 @@ end
 
 ---
 ---@param self DroneInstruction
----@param finish_listener? fun() if set, is called when the drone reports having finished the instruction.
-function DroneInstruction:queueExecute(finish_listener)
+function DroneInstruction:queueExecute()
   local f = function(address)
     self:execute(address)
-    if finish_listener then
-      finish_listener() -- todo: as a Future
-    end
   end
-  Drones.queue(f, self.start_location)
+  return Drones.queue(f, self.start_location)
 
 end
 
