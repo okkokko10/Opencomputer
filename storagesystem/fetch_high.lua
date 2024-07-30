@@ -162,7 +162,7 @@ end
 --- sets a drone to be free. pushes a notification
 ---@param address string
 function Drones.setFree(address)
-  event.push("thread_drone freed", address) -- todo: for some reason does not do anything.
+  event.push("thread_drone freed", address)
 end
 
 --- pulls an echo from the drone. blocks

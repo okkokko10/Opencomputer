@@ -73,8 +73,8 @@ end
 ---@param to_iid number
 ---@param to_slot number
 ---@param size number
----@param item table Item
----@param finish_listener fun() is called when the item has been confirmed to be moved
+---@param item? Item
+---@param finish_listener? fun() is called when the item has been confirmed to be moved
 function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item, finish_listener)
   item = item or ti.getInSlot(from_iid, from_slot)
   if not item then

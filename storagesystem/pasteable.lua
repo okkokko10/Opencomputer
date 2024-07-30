@@ -40,4 +40,4 @@ ih.move(1, 1, 2, 10, 3)
 
 -- event.listen("tablet_use",function(_,tbl) print(serialization.serialize(tbl));computer.beep(200,0.1) end)
 
---- todo: spamming ih.move back and forth breaks the system
+

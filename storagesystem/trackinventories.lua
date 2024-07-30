@@ -350,13 +350,10 @@ end
 --- starts adding an item to the slot.
 ---@param id IID
 ---@param item Item
----@param slot (nil | integer)
----@param size (nil | integer)
+---@param slot integer
+---@param size integer
 ---@return boolean success
 function Inventory.Lock.startAdd(id, item, slot, size, precalculated_can)
-  -- todo: need to actually order a drone
-  slot = slot or Item.getslot(item)
-  size = size or Item.getsize(item)
   return Inventory.Lock.add_add_max(id, slot, size, item, precalculated_can)
 
 end
@@ -364,14 +361,11 @@ end
 --- starts removing an item from the slot.
 ---@param id IID
 ---@param item Item
----@param slot (nil | integer)
----@param size (nil | integer)
+---@param slot integer
+---@param size integer
 ---@return boolean success
 function Inventory.Lock.startRemove(id, item, slot, size, precalculated_can)
-  slot = slot or Item.getslot(item)
-  size = size or Item.getsize(item)
   return Inventory.Lock.add_remove_max(id, slot, size, item, precalculated_can)
-
 end
 
 --- sets the inventory according to scan data
@@ -381,6 +375,8 @@ end
 local function updateFromScan(scan_data)
   Inventory.write(scan_data.id, Helper.mapWithKeys(scan_data.storage, Item.parseScanned), scan_data.space)
 end
+
+-- todo: handle updating from scan in a Future.onSuccess?
 
 -- automatically update inventories when scan data arrives
 local function scan_data_listener(e, localAddress, remoteAddress, port, distance, name, message)
