@@ -1,7 +1,6 @@
 local thread = require "thread"
 local os = require "os"
 
-
 ---@diagnostic disable thread
 ---@diagnostic disable os
 
@@ -15,20 +14,18 @@ local Future = {}
 
 Future.__index = Future
 
-
 function Future:__tostring()
   if self.success == nil then
     return "Incomplete"
   elseif self.success == true then
     local out = {}
-    for i = 2,#self.results do
-      out[i-1] = tostring(self.results[i])
+    for i = 2, #self.results do
+      out[i - 1] = tostring(self.results[i])
     end
-    return "Success(" .. table.concat(out,", ") .. ")"
+    return "Success(" .. table.concat(out, ", ") .. ")"
   end
-  return "Failure(".. tostring(self.results[2]) .. ")"
+  return "Failure(" .. tostring(self.results[2]) .. ")"
 end
-
 
 --- creates a new future.
 ---@generic T any
@@ -36,15 +33,16 @@ end
 ---@return Future
 function Future.create(func)
   local fut = setmetatable({}, Future)
-  fut.t = thread.create(function()
-    local results = {pcall(func)}
-    fut.results = fut.results or results -- could alleviate race conditions from kill?
-    fut.success = results[1]
-  end)
+  fut.t =
+    thread.create(
+    function()
+      local results = {pcall(func)}
+      fut.results = fut.results or results -- could alleviate race conditions from kill?
+      fut.success = results[1]
+    end
+  )
   return fut
 end
-
-
 
 --- blocks until completion, or timeout
 ---@param timeout? number seconds
@@ -53,7 +51,7 @@ function Future:join(timeout)
   return self.t:join(timeout)
 end
 
---- if incomplete, kills the future's execution, 
+--- if incomplete, kills the future's execution,
 --- if provided, sets the result of the future to the arguments
 --- otherwise makes it a failure with error message "kill".
 ---@generic T
@@ -81,12 +79,15 @@ end
 ---@param timeout number seconds
 ---@param success? boolean
 ---@vararg T|string|nil
----@return Future<boolean> 
+---@return Future<boolean>
 function Future:killAfter(timeout, success, ...)
   local args = {...}
-  return self:onComplete(function()
-    return self:kill(success, table.unpack(args))
-  end, timeout)
+  return self:onComplete(
+    function()
+      return self:kill(success, table.unpack(args))
+    end,
+    timeout
+  )
 end
 
 --- blocks until the future has completed, then returns success,result. returns nil if timed out
@@ -124,9 +125,11 @@ end
 ---@param timeout? number seconds -- starting from when this is registered
 ---@return Future<T2>
 function Future:onComplete(func, timeout)
-  return Future.create(function()
-    return func(self:awaitProtected(timeout))
-  end)
+  return Future.create(
+    function()
+      return func(self:awaitProtected(timeout))
+    end
+  )
 end
 
 --- eventually calls the function with this future's result if it succeeds
@@ -136,14 +139,16 @@ end
 ---@param func fun(...:T):T2? -- takes the result of self:
 ---@return Future<T2>
 function Future:onSuccess(func)
-  return Future.create(function()
-    self:join()
-    if self.success then
-      return func(table.unpack(self.results, 2))
-    else
-      error("failure") -- this will be caught by the pcall and sent to any further onFailure
+  return Future.create(
+    function()
+      self:join()
+      if self.success then
+        return func(table.unpack(self.results, 2))
+      else
+        error("failure") -- this will be caught by the pcall and sent to any further onFailure
+      end
     end
-  end)
+  )
 end
 
 --- eventually calls the function with this future's error if it fails
@@ -152,14 +157,16 @@ end
 ---@param func fun(errormessage:string):T2?
 ---@return Future<T2>
 function Future:onFailure(func)
-  return Future.create(function()
-    self:join()
-    if self.success then
-      error("success") -- this will be caught by the pcall and sent to any further onFailure
-    else
-      return func(table.unpack(self.results, 2))
+  return Future.create(
+    function()
+      self:join()
+      if self.success then
+        error("success") -- this will be caught by the pcall and sent to any further onFailure
+      else
+        return func(table.unpack(self.results, 2))
+      end
     end
-  end)
+  )
 end
 
 ---
@@ -171,10 +178,12 @@ end
 ---@param timeout? number seconds
 ---@return Promise
 function Future.createPromise(timeout)
-  return Future.create(function()
-    os.sleep(timeout or math.huge)
-    error("promise timed out")
-  end)
+  return Future.create(
+    function()
+      os.sleep(timeout or math.huge)
+      error("promise timed out")
+    end
+  )
 end
 
 --- meant for promises, makes it a success and sets the result to arguments
@@ -204,9 +213,11 @@ end
 --- sets the promise to copy this future
 ---@param future Future
 function Future:completeWith(future)
-  future:onComplete(function(success,...)
-    return self:completePromise(success,...)
-  end)
+  future:onComplete(
+    function(success, ...)
+      return self:completePromise(success, ...)
+    end
+  )
 end
 
 ---creates a dummy future that instantly completes with args
@@ -214,18 +225,16 @@ end
 ---@param success boolean
 ---@param ... T|string
 ---@return Future<T>
-function Future.createInstant(success,...)
+function Future.createInstant(success, ...)
   local fut = setmetatable({}, InstantFuture)
-  fut.results = {success,...}
+  fut.results = {success, ...}
   fut.success = success
   return fut
-  
 end
-
 
 --- a subclass of Future that instantly returns values without creating a thread
 ---@class InstantFuture: Future
-local InstantFuture = setmetatable({},Future)
+local InstantFuture = setmetatable({}, Future)
 InstantFuture.__index = InstantFuture
 
 function InstantFuture:kill(...)
@@ -235,8 +244,30 @@ function InstantFuture:join(...)
   return true
 end
 
+---takes all threads from the futures
+---remember that not all futures have threads
+---@param futures Future[]
+---@return thread[]
+local function filtermapToThreads(futures)
+  return Helper.mapIndexed(
+    futures,
+    function(fut, k)
+      return fut.t
+    end
+  )
+end
 
+--- blocks until all futures are complete
+---@param futures Future[]
+---@param timeout? number seconds
+function Future.joinAll(futures, timeout)
+  local threads = filtermapToThreads(futures)
+  return thread.waitForAll(threads, timeout)
+end
 
-
+-- todo
+-- waits for any of the futures to succeed. returns nil if timeout or all futures fail
+function Future.awaitAnySuccess(futures, timeout)
+end
 
 return Future
