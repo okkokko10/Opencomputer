@@ -82,6 +82,8 @@ function Inventory.read(id)
         Inventory.write(id, contents)
       end
     end, spacetaken
+  else
+    error("no such inventory")
   end
 end
 

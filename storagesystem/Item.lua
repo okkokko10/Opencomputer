@@ -73,8 +73,8 @@ end
 
 ---@param self Item
 ---@return string
-function Item.getHash(item)
-  return Item.getUItem(item)[7]
+function Item.getHash(self)
+  return Item.getUItem(self)[7]
 end
 --- gets uItem
 ---@param self Item
@@ -92,7 +92,7 @@ end
 ---@param b Item|nil
 ---@return boolean
 function Item.equals(a, b)
-  return a and b and Item.makeIndex(a) == Item.makeIndex(b)
+  return a and b and Item.makeIndex(a) == Item.makeIndex(b) or false
   -- return Item.getHash(a) == Item.getHash(b)
   -- if type(a) ~= "table" or type(b) ~= "table" then
   --   return false

@@ -163,8 +163,8 @@ end
 ---@param message string
 ---@return LongMessage
 local function makeTable(e, localAddress, remoteAddress, port, distance, name, message)
-  if not e then
-    return nil
+  if e ~="longmsg_message" then
+    error("not longmsg_message")
   end
   return {
     localAddress = localAddress,
@@ -229,7 +229,7 @@ function longmsg.pullFiltered(filter)
 end
 
 --- like event.pull
----@param ops LongMessage filter
+---@param ops table filter
 ---@param timeout? number seconds
 ---@return LongMessage
 function longmsg.pullTable(ops, timeout)

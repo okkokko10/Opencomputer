@@ -1,3 +1,6 @@
+
+---@diagnostic disable
+
 -- del /usr/lib/longmsg_message.lua; edit /usr/lib/longmsg_message.lua
 longmsg = require "longmsg_message"
 fa = require("fetch_api")

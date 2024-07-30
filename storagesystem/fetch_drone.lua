@@ -1,3 +1,4 @@
+---@diagnostic disable
 ver="0.1.2"
 PORT=2400
 c=component

@@ -1,11 +1,15 @@
 local thread = require "thread"
 local os = require "os"
 
+
+---@diagnostic disable thread
+---@diagnostic disable os
+
 ---
 ---@generic T any
 ---@class Future<T>
 ---@field success boolean|nil -- true for success, false for error, nil for incomplete
----@field private results table -- result of pcall(func, ...)
+---@field results table -- result of pcall(func, ...)
 ---@field private t thread
 local Future = {}
 
@@ -15,16 +19,17 @@ Future.__index = Future
 ---@generic T any
 ---@param func fun():T
 ---@return Future<T>
-function Future.create(func, ...)
-  ---@type Future<T>
+function Future.create(func)
   local fut = setmetatable({}, Future)
   fut.t = thread.create(function()
-    local results = {pcall(func, ...)}
+    local results = {pcall(func)}
     fut.results = fut.results or results -- could alleviate race conditions from kill?
     fut.success = results[1]
   end)
   return fut
 end
+
+
 
 --- blocks until completion, or timeout
 ---@param timeout? number seconds
@@ -63,8 +68,9 @@ end
 ---@vararg T|string|nil
 ---@return Future<boolean> 
 function Future:killAfter(timeout, success, ...)
+  local args = {...}
   return self:onComplete(function()
-    return self:kill(success, ...)
+    return self:kill(success, table.unpack(args))
   end, timeout)
 end
 
@@ -164,7 +170,7 @@ end
 
 --- meant for promises, makes it a failure and sets the error message
 ---@param errormessage string
----@return boolean if this is what completed the promise
+---@return boolean -- if this is what completed the promise
 function Future:failPromise(errormessage)
   checkArg(1, errormessage, "string")
   return self:kill(false, errormessage)
@@ -173,7 +179,7 @@ end
 --- meant for promises, sets outcome like pcall results. alias for Future:kill
 ---@param success boolean
 ---@vararg any
----@return boolean if this is what completed the promise
+---@return boolean -- if this is what completed the promise
 function Future:completePromise(success, ...)
   checkArg(1, success, "boolean")
   return self:kill(success, ...)

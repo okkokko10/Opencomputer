@@ -1,5 +1,13 @@
 local Item = require "Item"
 
+
+
+---@class Recipe
+---@field outputItem Item
+---@field needed Item[]
+---@field machineType string
+---@field using table
+---@field extra any
 local Recipe = {}
 
 --[[
@@ -24,8 +32,12 @@ machine: {
 
 ]]
 
+--- todo, dummy
+---@param item Item
+---@return Recipe?
 function Recipe.getRecipe(item)
-  return -- todo, dummy
+  -- todo, dummy
+  return
 end
 
 return Recipe

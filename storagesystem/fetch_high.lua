@@ -140,9 +140,9 @@ function Drones.isFree(address)
 end
 
 --- gets a drone that is not busy
----@param location Location|nil prioritizes drones close to this location
+---@param location? Location prioritizes drones close to this location
 ---@param filter? fun(address:Address):boolean does a drone fit
----@return Drone|nil
+---@return Address?
 function Drones.getFreeDrone(location, filter)
   filter = filter or function()
     return true

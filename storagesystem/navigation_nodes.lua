@@ -22,7 +22,7 @@ end
 --- gets the parent of a node, with other fallback names. this way inventory data and Location also works
 ---@param target Location
 function Nodes.parent(target)
-  return target.nodeparent or target.parent or target.node
+  return target.nodeparent
 end
 
 --- gets a node by its id
@@ -101,11 +101,11 @@ function Nodes.pathbetween(startID, finishID)
 end
 
 --- adds a new node
----@param nodeid NodeID|nil leave nil to automatically assign one
+---@param nodeid? NodeID leave nil to automatically assign one
 ---@param x number
 ---@param y number
 ---@param z number
----@param nodeparent NodeID|nil
+---@param nodeparent? NodeID
 ---@return NodeID
 function Nodes.create(nodeid, x, y, z, nodeparent)
   nodeid = nodeid or #(Nodes.nodes) + 1
@@ -125,7 +125,7 @@ end
 ---@param x number
 ---@param y number
 ---@param z number
----@return Node
+---@return Node?
 function Nodes.findclosest(x, y, z)
   local temp = Helper.min(Nodes.nodes, function(v, k)
     return (v.x - x) * (v.x - x) + (v.y - y) * (v.y - y) + (v.z - z) * (v.z - z)

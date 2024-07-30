@@ -5,13 +5,15 @@ local Nodes = require "navigation_nodes"
 -- class for locations connected to a navigation node. a node also happens to be a Location.
 local Location = {}
 
+---todo: dimension
+
 ---@class Position 
 ---@field x number
 ---@field y number
 ---@field z number
 
 ---@class Location: Position
----@field nodeparent NodeID
+---@field nodeparent NodeID?
 
 --- shorthand for fetch_api.actions.moveto
 ---@param self Location
@@ -34,9 +36,9 @@ function Location.equals(self, other)
 end
 
 --- returns list of moveto commands to move from Location self to Location other
----@param self Location
----@param other Location
----@return DroneAction_moveto[]|nil
+---@param self Location|Node
+---@param other Location|Node
+---@return DroneAction_moveto[]?
 function Location.pathfind(self, other)
   -- might repeat positions at the start and end
   local pathids = Nodes.pathbetween(self.nodeid or Nodes.parent(self), other.nodeid or Nodes.parent(other))

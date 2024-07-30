@@ -143,9 +143,9 @@ function actions.changeColor(rgb)
 end
 
 --- send actions
----@param address string
----@param port integer
----@param id any
+---@param address? string
+---@param port? integer
+---@param id? any
 ---@param ... DroneAction[]
 local function send(address, port, id, ...) -- address: string or nil, port: int or nil, id: string or number or nil, ...: actions
   id = id or math.random()
@@ -154,9 +154,9 @@ local function send(address, port, id, ...) -- address: string or nil, port: int
   return id, message
 end
 --- send actions
----@param address string
----@param port integer
----@param id any
+---@param address? string
+---@param port? integer
+---@param id? any
 ---@param orders DroneAction[]
 local function sendTable(address, port, id, orders) -- address: string or nil, port: int or nil, id: string or number or nil, ...: actions
   id = id or math.random()
