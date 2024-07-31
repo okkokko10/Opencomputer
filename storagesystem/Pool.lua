@@ -2,6 +2,7 @@
 local Future = require "Future"
 local event = require "event"
 local thread = require "thread"
+local Helper = require "Helper"
 
 -- todo: it could be more efficient to wait a second instead of immediately starting a request, so that objects that fit better can be chosen.
 
@@ -35,9 +36,13 @@ local Pool = {}
 Pool.__index = Pool
 
 function Pool.create()
-    local pool = setmetatable({}, Pool)
-    pool.t = thread.create(pool.main, pool)
+    local pool = setmetatable({in_queue = {}, objects = {}, poolidentifier = math.random()}, Pool)
+    pool.t = pool:_main_thread()
     return pool
+end
+
+function Pool:_main_thread()
+    return thread.create(self._main, self)
 end
 
 ---adds the object to this pool
@@ -99,7 +104,13 @@ function Pool:_do_queue(q)
             if v.busy then
                 return nil
             else
-                return fitness(v.object) --- todo: this call to fitness is entirely unprotected
+                local success, fit = pcall(fitness, v.object)
+                if not success then
+                    event.onError("error in fitness: " .. fit)
+                    return nil
+                else
+                    return fit
+                end
             end
         end
     )
@@ -115,8 +126,10 @@ function Pool:_do_freed(i)
         ---@cast usage    fun(obj:R):R
         ---@cast fitness  fun(obj:T):(number|nil)
         ---@cast promise  Promise<R>
-        local fit = fitness(obj.object)
-        if fit and fit < math.huge then -- todo: have there also be a competition about fitness here, so if there is a lot of work piled up, the closest gets done first
+        local success, fit = pcall(fitness, obj.object)
+        if not success then
+            event.onError("error in fitness: " .. fit)
+        elseif fit and fit < math.huge then -- todo: have there also be a competition about fitness here, so if there is a lot of work piled up, the closest gets done first
             self.in_queue[k] = nil
             self:_call(usage, promise, i)
             return
@@ -125,15 +138,21 @@ function Pool:_do_freed(i)
     obj.busy = false
 end
 
-function Pool:main()
+function Pool:_main()
     while true do
         local pulled = {event.pull("Pool", self.poolidentifier)}
         if pulled[3] == "freed" then
             local i = pulled[4]
-            self:_do_freed(i)
+            local success, result = pcall(self._do_freed, self, i)
+            if not success then
+                event.onError("error in freed: " .. result)
+            end
         elseif pulled[3] == "queue" then
             local q = pulled[4]
-            self:_do_queue(q)
+            local success, result = pcall(self._do_queue, self, q)
+            if not success then
+                event.onError("error in queue: " .. result)
+            end
         end
     end
 end
