@@ -10,6 +10,7 @@ local Location = require "Location"
 local filehelp = require "filehelp"
 local longmsg = require "longmsg_message"
 local thread = require("thread")
+local Pool = require "Pool"
 
 -- set up listener for the return message
 -- buffer for requests while all drones are busy
@@ -27,7 +28,7 @@ local Drones = {}
 
 Drones.DRONES_PATH = "/usr/storage/drones.csv"
 
----@type table<string,Drone> --- [address]: {address=, business:(order)=, nodeparent=, x=, y=, z=, status=(drone's latest status report)}
+---@type table<Address,Drone> --- [address]: {address=, business:(order)=, nodeparent=, x=, y=, z=, status=(drone's latest status report)}
 Drones.drones = filehelp.loadCSV(Drones.DRONES_PATH, "address")
 -- {
 --   address=,
@@ -103,6 +104,7 @@ local function receiveEcho(address, message, distance)
     drone.z = z
     drone.nodeparent = closest.nodeid
     api.send(address, nil, nil, api.actions.updateposition(x, y, z), api.actions.execute('d.setStatusText("f"..ver)'))
+    Drones.pool_drone:register(address)
     Drones.setFree(address)
   end
 end
@@ -126,6 +128,7 @@ local function updateFromStatus(status, address, statusName)
   end
 end
 
+--- todo
 local function drone_listener(e, localAddress, remoteAddress, port, distance, name, message)
   if (name == "status" or name == "wakeup" or name == "error") then
     local status = serialization.unserialize(message)
@@ -147,15 +150,18 @@ function Drones.addDrone(address, nodeparent, x, y, z)
   }
 end
 
+---@deprecated
 function Drones.setBusy(address)
   Drones.drones[address].business = true
 end
 
+---@deprecated
 function Drones.isFree(address)
   return not Drones.drones[address].business
 end
 
 --- gets a drone that is not busy
+---@deprecated
 ---@param location? Location prioritizes drones close to this location
 ---@param filter? fun(address:Address):boolean does a drone fit
 ---@return Address?
@@ -180,9 +186,10 @@ function Drones.getFreeDrone(location, filter)
 end
 
 --- sets a drone to be free. pushes a notification
+---@deprecated Pool does this automatically
 ---@param address string
 function Drones.setFree(address)
-  event.push("thread_drone freed", address)
+  -- event.push("thread_drone freed", address)
 end
 
 --- pulls an echo from the drone. blocks
@@ -201,86 +208,32 @@ function Drones.pullEcho(address, message, timeout)
   )
 end
 
---- handles Drones.queue
-local thread_drone = {}
-
----@type [fun(address:string):any,Location?,(nil|fun(address:Address):boolean),Promise][]
-thread_drone.in_queue = {}
-
 --- callback is called asynchronously with a drone address. during its execution that drone is reserved for it.
 --- returns a future of callback.
----@generic T
----@param callback fun(address:string):T
+---@generic R
+---@param callback fun(address:string):R
 ---@param location? Location
 ---@param filter? fun(address:Address):boolean does a drone fit
----@return Future
+---@return Future ---<R>
 function Drones.queue(callback, location, filter)
-  local finish_promise = Future.createPromise()
-  local i = #thread_drone.in_queue + 1
-  table.insert(thread_drone.in_queue, i, {callback, location, filter, finish_promise})
-  event.push("thread_drone queue", i) -- maybe make a custom method that allows sending functions
-  return finish_promise
-end
-
----comment
----@param callback fun(address:string):any
----@param address Address
----@param promise Promise
-function thread_drone.call(callback, address, promise)
-  Drones.setBusy(address)
-  local body =
-    Future.create(
-    function()
-      return callback(address)
+  return Drones.pool_drone:queue(
+    callback,
+    function(address)
+      if filter and not filter(address) then
+        return nil
+      elseif not location then
+        return 0
+      else
+        return Location.pathDistance(Drones.get(address), location)
+      end
     end
   )
-  body:onComplete(
-    function()
-      Drones.setFree(address)
-    end
-  )
-  promise:completeWith(body)
 end
 
-function thread_drone.freed(address)
-  Drones.drones[address].business = nil
-  local drone = Drones.get(address)
-  for k, v in pairs(thread_drone.in_queue) do
-    local callback, location, filter, promise = table.unpack(v)
-    if (not filter or filter(address)) and Location.pathfind(location, drone) then
-      thread_drone.in_queue[k] = nil
-      thread_drone.call(callback, address, promise)
-      return
-    end
-  end
+Drones.pool_drone = Pool.create()
+for address, drone in pairs(Drones.drones) do
+  Drones.pool_drone:register(address)
 end
-
-function thread_drone.queue(i)
-  local callback, location, filter, promise = table.unpack(thread_drone.in_queue[i]) --- Drones.queue
-
-  local addr = Drones.getFreeDrone(location, filter)
-  if addr then
-    thread_drone.in_queue[i] = nil
-    thread_drone.call(callback, addr, promise)
-  end
-end
-
-function thread_drone.main()
-  while true do
-    local pulled = {event.pull("thread_drone.*")} -- event.pullMultiple would also work
-    if pulled[1] == "thread_drone freed" then
-      local address = pulled[2]
-      thread_drone.freed(address)
-    elseif pulled[1] == "thread_drone queue" then
-      local i = pulled[2]
-      thread_drone.queue(i)
-    end
-  end
-end
-
-thread_drone.main_thread = thread.create(thread_drone.main)
-
-Drones.thread_drone = thread_drone
 
 function Drones.registerNearby()
   api.send(nil, nil, nil, api.actions.echo("register fetcher")) -- todo move from receiveEcho

@@ -102,7 +102,7 @@ end
 --- gets the value and key that result in the smallest output of fun. if all return math.huge, then returns nil
 ---@generic K,V
 ---@param target table<K,V>
----@param fun fun(v:V,k:K):number -- return math.huge to ignore
+---@param fun fun(v:V,k:K):number? -- return math.huge or nil to ignore
 ---@return V|nil
 ---@return K|nil
 function Helper.min(target, fun)
@@ -111,7 +111,7 @@ function Helper.min(target, fun)
   local current_key = nil
   for k, v in pairs(target) do
     local points = fun(v, k)
-    if points < current_points then
+    if points and points < current_points then
       current_value = v
       current_key = k
     end
