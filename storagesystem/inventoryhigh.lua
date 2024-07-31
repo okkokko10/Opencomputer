@@ -96,15 +96,17 @@ function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item)
   end
   ti.Lock.startRemove(from_iid, item, from_slot, size)
   ti.Lock.startAdd(to_iid, item, to_slot, size)
-  local work = DroneInstruction.join2(
+  local work =
+    DroneInstruction.join2(
     DroneInstruction.suck(from_iid, from_slot, 1, size),
     DroneInstruction.drop(to_iid, to_slot, 1, size)
   ):queueExecute()
-  local finish = work:onSuccess(
+  local finish =
+    work:onSuccess(
     function()
       ti.Lock.commitRemove(from_iid, from_slot, size)
       ti.Lock.commitAdd(to_iid, to_slot, size)
-      -- todo: if a failure is detected, undo the action instead. 
+      -- todo: if a failure is detected, undo the action instead.
       -- todo: program drones to do the completed instructions in reverse when they encounter an exception, then they echo failure.
       return true
     end

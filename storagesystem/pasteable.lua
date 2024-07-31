@@ -1,4 +1,3 @@
-
 ---@diagnostic disable
 
 -- del /usr/lib/longmsg_message.lua; edit /usr/lib/longmsg_message.lua
@@ -39,5 +38,3 @@ ih.move(1, 1, 2, 10, 3)
 -- for k, v in pairs(ih.allItems()) do print(v.size,Item.getlabel(v)) end
 
 -- event.listen("tablet_use",function(_,tbl) print(serialization.serialize(tbl));computer.beep(200,0.1) end)
-
-

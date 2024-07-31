@@ -97,7 +97,6 @@ function Nodes.pathbetween(startID, finishID)
   --  1 2 3 4 5 6 7
   -- ^ j=nil
   -- when startID and finishID are the same, just returns a single {finishID}
-
 end
 
 --- adds a new node
@@ -118,7 +117,6 @@ function Nodes.create(nodeid, x, y, z, nodeparent)
   }
   Nodes.saveNodes()
   return nodeid
-
 end
 
 --- gets the closest node to the coordinates
@@ -127,9 +125,13 @@ end
 ---@param z number
 ---@return Node?
 function Nodes.findclosest(x, y, z)
-  local temp = Helper.min(Nodes.nodes, function(v, k)
-    return (v.x - x) * (v.x - x) + (v.y - y) * (v.y - y) + (v.z - z) * (v.z - z)
-  end)
+  local temp =
+    Helper.min(
+    Nodes.nodes,
+    function(v, k)
+      return (v.x - x) * (v.x - x) + (v.y - y) * (v.y - y) + (v.z - z) * (v.z - z)
+    end
+  )
   return temp
 end
 

@@ -7,7 +7,7 @@ local Location = {}
 
 ---todo: dimension
 
----@class Position 
+---@class Position
 ---@field x number
 ---@field y number
 ---@field z number
@@ -25,14 +25,12 @@ function Location.moveto(self)
     y = self.y,
     z = self.z
   }
-
 end
---- do self and other have the same x, y and z attributes? 
+--- do self and other have the same x, y and z attributes?
 ---@param self Position|nil
 ---@param other Position|nil
 function Location.equals(self, other)
   return self and other and self.x == other.x and self.y == other.y and self.z == other.z
-
 end
 
 --- returns list of moveto commands to move from Location self to Location other
@@ -48,9 +46,13 @@ function Location.pathfind(self, other)
   if Location.equals(self, other) then
     return {} -- no motion is necessary. this goes after checking pathids to make sure the locations share a common root
   end
-  local pathloc = Helper.map(pathids, function(id)
-    return Location.moveto(Nodes.get(id))
-  end)
+  local pathloc =
+    Helper.map(
+    pathids,
+    function(id)
+      return Location.moveto(Nodes.get(id))
+    end
+  )
   pathloc[#pathloc + 1] = Location.moveto(other)
   return pathloc
 end
@@ -62,7 +64,6 @@ end
 function Location.pathDistance(self, other)
   local path = Location.pathfind(self, other)
   return path and #path or math.huge
-
 end
 
 --- modifies target: copies location data of base to target. leave nil to get a new copy

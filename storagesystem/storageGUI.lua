@@ -39,7 +39,6 @@ function GUI.showItems(itemlist, offset)
 end
 
 function GUI.display()
-
 end
 
 --- each item row is its own element to press

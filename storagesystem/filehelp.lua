@@ -21,7 +21,7 @@ local function savef2(filename, buffer)
   local file_parentpath = fs.path(filename)
 
   local new = not fs.exists(filename)
-  local backup -- presumably this is: find the smallest name filename~x that is not taken, and backup to it
+  local backup  -- presumably this is: find the smallest name filename~x that is not taken, and backup to it
   if not new then
     backup = filename .. "~"
     for i = 1, math.huge do
@@ -138,7 +138,6 @@ local autosaveListener = nil
 function filehelp.autosaveSetup(seconds)
   filehelp.autosaveCancel()
   autosaveListener = event.timer(seconds, filehelp.saveCache, math.huge)
-
 end
 function filehelp.autosaveCancel()
   if autosaveListener then
@@ -158,21 +157,29 @@ end
 function filehelp.loadCSV(filepath, keyname)
   keyname = keyname or "id"
   local amount = 0 -- unimplemented
-  return Helper.mapWithKeys(filehelp.loadf(filepath), function(line)
-    local out = serialization.unserialize(line) -- empty file
-    amount = amount + 1
-    return out, out and out[keyname]
-  end)
+  return Helper.mapWithKeys(
+    filehelp.loadf(filepath),
+    function(line)
+      local out = serialization.unserialize(line) -- empty file
+      amount = amount + 1
+      return out, out and out[keyname]
+    end
+  )
 end
 
 --- saves a table of tables to a file. Does not guarantee any particular order.
 ---@param target table
 ---@param filepath string
 function filehelp.saveCSV(target, filepath)
-  filehelp.savef(filepath, Helper.mapIndexed(target, function(one)
-    return serialization.serialize(one)
-  end))
-
+  filehelp.savef(
+    filepath,
+    Helper.mapIndexed(
+      target,
+      function(one)
+        return serialization.serialize(one)
+      end
+    )
+  )
 end
 
 return filehelp

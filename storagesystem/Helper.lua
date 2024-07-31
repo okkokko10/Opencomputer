@@ -15,7 +15,7 @@ function Helper.map(target, fun)
   end
   return out
 end
---- map. if k' is nil, the entry is filtered out 
+--- map. if k' is nil, the entry is filtered out
 ---@param target table
 ---@param fun function (v,k) => v',k'
 function Helper.mapWithKeys(target, fun)
@@ -84,7 +84,6 @@ function Helper.flatten(supertable, out)
     end
   end
   return out
-
 end
 
 --- find an element and index that fits the condition

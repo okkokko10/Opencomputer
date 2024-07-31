@@ -91,7 +91,17 @@ longmsg.messages = {} -- table of incomplete messages. could be local instead
 
 longmsg.senderHistory = {} -- table of how many times an address has sent a longmsg message. not persistent
 
-local function receivemessage(evt, localAddress, remoteAddress, port, distance, longmsgtag, id, i, outOf, name,
+local function receivemessage(
+  evt,
+  localAddress,
+  remoteAddress,
+  port,
+  distance,
+  longmsgtag,
+  id,
+  i,
+  outOf,
+  name,
   messagePart)
   if evt ~= "modem_message" or longmsgtag ~= "longmsg" then
     return
@@ -99,7 +109,7 @@ local function receivemessage(evt, localAddress, remoteAddress, port, distance, 
   local identifier = {remoteAddress, port, id} -- could change if relay?
   if not longmsg.messages[identifier] then
     longmsg.messages[identifier] = {}
-    -- todo: set up timeout
+  -- todo: set up timeout
   end
   local msi = longmsg.messages[identifier]
   msi[i] = messagePart
@@ -120,19 +130,22 @@ function longmsg.setupDebug(x, y, width, height, evt) -- sets a box of given dim
   local rx, ry = gpu.getResolution()
   width = width or rx - x
   height = height or ry - y
-  return event.listen(evt or "longmsg_message", function(...)
-    -- local extra = "" .. e .. " " .. localAddress .. " " .. remoteAddress .. " " .. port .. " " .. distance .. " " ..
-    --                 name .. " "
-    local message = ({...})[7]
-    if evt then
-      message = serialization.serialize({...}, 30)
+  return event.listen(
+    evt or "longmsg_message",
+    function(...)
+      -- local extra = "" .. e .. " " .. localAddress .. " " .. remoteAddress .. " " .. port .. " " .. distance .. " " ..
+      --                 name .. " "
+      local message = ({...})[7]
+      if evt then
+        message = serialization.serialize({...}, 30)
+      end
+      local spl = helper.splitSized(message, width - 2) -- -2 for the borders
+      for i = 1, math.min(#spl, height) do
+        gpu.set(x, y + i - 1, "|" .. spl[i])
+        gpu.set(x + width - 1, y + i - 1, "|")
+      end
     end
-    local spl = helper.splitSized(message, width - 2) -- -2 for the borders
-    for i = 1, math.min(#spl, height) do
-      gpu.set(x, y + i - 1, "|" .. spl[i])
-      gpu.set(x + width - 1, y + i - 1, "|")
-    end
-  end)
+  )
 end
 
 function longmsg.getSenderHistory()
@@ -163,7 +176,7 @@ end
 ---@param message string
 ---@return LongMessage
 local function makeTable(e, localAddress, remoteAddress, port, distance, name, message)
-  if e ~="longmsg_message" then
+  if e ~= "longmsg_message" then
     error("not longmsg_message")
   end
   return {
@@ -181,9 +194,7 @@ end
 ---@return string, Address?, Address?, integer?, number?, string?, string?
 local function tableToParams(longmessage)
   longmessage = longmessage or {}
-  return "longmsg_message", longmessage.localAddress, longmessage.remoteAddress, longmessage.port, longmessage.distance,
-    longmessage.name, longmessage.message
-
+  return "longmsg_message", longmessage.localAddress, longmessage.remoteAddress, longmessage.port, longmessage.distance, longmessage.name, longmessage.message
 end
 --- sees if longmessage fits the filter. nil is any
 ---@param longmessage LongMessage
@@ -202,7 +213,6 @@ local function compareFilter(longmessage, ops)
     -- end
   end
   return true
-
 end
 
 --- wraps a function that accepts LongMessage
@@ -218,7 +228,6 @@ end
 ---@param callback fun(longmessage: LongMessage)
 function longmsg.listenTable(callback)
   longmsg.listen(wrapTableFunc(callback))
-
 end
 
 --- todo

@@ -1,7 +1,5 @@
 local Item = require "Item"
 
-
-
 ---@class Recipe
 ---@field outputItem Item
 ---@field needed Item[]
@@ -31,7 +29,6 @@ machine: {
 }
 
 ]]
-
 --- todo, dummy
 ---@param item Item
 ---@return Recipe?
@@ -41,4 +38,3 @@ function Recipe.getRecipe(item)
 end
 
 return Recipe
-

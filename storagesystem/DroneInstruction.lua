@@ -36,7 +36,6 @@ end
 ---@return DroneInstruction
 function DroneInstruction.at(location)
   return DroneInstruction.make(location, location, {})
-
 end
 
 --- appends movement to the instruction
@@ -44,16 +43,22 @@ end
 ---@param location Location
 ---@return DroneInstruction
 function DroneInstruction.moveto(self, location)
-  return DroneInstruction.make(self.start_location, Location.copy(location),
-    Helper.flatten({self.actions, Location.pathfind(self.finish_location, location)}))
+  return DroneInstruction.make(
+    self.start_location,
+    Location.copy(location),
+    Helper.flatten({self.actions, Location.pathfind(self.finish_location, location)})
+  )
 end
 -- prepends movement to instruction.
 ---@param self DroneInstruction
 ---@param location Location
 ---@return DroneInstruction
 function DroneInstruction.movefrom(self, location)
-  return DroneInstruction.make(Location.copy(location), self.finish_location,
-    Helper.flatten({Location.pathfind(location, self.start_location), self.actions}))
+  return DroneInstruction.make(
+    Location.copy(location),
+    self.finish_location,
+    Helper.flatten({Location.pathfind(location, self.start_location), self.actions})
+  )
 end
 
 --- scan the inventory
@@ -120,7 +125,6 @@ end
 ---@param instructions DroneInstruction[]
 ---@return DroneInstruction
 function DroneInstruction.join(instructions)
-
   local actions = Helper.flatten({instructions[1].actions})
   local start_location = instructions[1].start_location
   local finish_location = instructions[1].finish_location
@@ -130,16 +134,17 @@ function DroneInstruction.join(instructions)
     finish_location = other.finish_location
   end
   return DroneInstruction.make(start_location, finish_location, actions)
-
 end
 --- do instructions in order.
 ---@param self DroneInstruction
 ---@param other DroneInstruction
 ---@return DroneInstruction
 function DroneInstruction.join2(self, other)
-  return DroneInstruction.make(self.start_location, other.finish_location, Helper.flatten(
-    {self.actions, Location.pathfind(self.finish_location, other.start_location), other.actions}))
-
+  return DroneInstruction.make(
+    self.start_location,
+    other.finish_location,
+    Helper.flatten({self.actions, Location.pathfind(self.finish_location, other.start_location), other.actions})
+  )
 end
 
 --- has the drone wait by beeping between actions
@@ -148,14 +153,17 @@ end
 ---@return DroneInstruction
 function DroneInstruction.separate(self, seconds)
   seconds = seconds or 0.5
-  local temp = Helper.mapWithKeys(self.actions, function(v, i)
-    return v, i * 2
-  end)
+  local temp =
+    Helper.mapWithKeys(
+    self.actions,
+    function(v, i)
+      return v, i * 2
+    end
+  )
   for i = 1, 2 * (#self.actions), 2 do
     temp[i] = api.actions.beep(math.max(100 - i, 40), seconds)
   end
   return DroneInstruction.make(self.start_location, self.finish_location, temp)
-
 end
 
 --- sets the drone to do the instruction. blocks, so call it in a thread.
@@ -170,9 +178,11 @@ function DroneInstruction:execute(drone_address)
   local finish_message = "fetcher finish " .. instruction_id
   local start_message = "fetcher start " .. instruction_id
 
-  local final = self:movefrom(Drones.drones[drone_address])
-    :firstDo{api.actions.echo(start_message), api.actions.changeColor(0x0F0F60)}
-    :thenDo{api.actions.echo(finish_message), api.actions.changeColor(0xFFFFFF)}
+  local final =
+    self:movefrom(Drones.drones[drone_address]):firstDo {
+    api.actions.echo(start_message),
+    api.actions.changeColor(0x0F0F60)
+  }:thenDo {api.actions.echo(finish_message), api.actions.changeColor(0xFFFFFF)}
 
   Location.copy(final.finish_location, Drones.drones[drone_address]) -- update drone's location. todo: make dedicated method
 
@@ -189,7 +199,6 @@ function DroneInstruction:execute(drone_address)
   -- Drones.setFree(drone_address)
 
   return true
-
 end
 
 ---
@@ -199,7 +208,6 @@ function DroneInstruction:queueExecute()
     self:execute(address)
   end
   return Drones.queue(f, self.start_location)
-
 end
 
 return DroneInstruction

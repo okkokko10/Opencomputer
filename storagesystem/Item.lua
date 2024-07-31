@@ -84,7 +84,6 @@ function Item.getUItem(self)
   -- if type(item) == "string" then
   --   return error("unimplemented")
   -- end
-
 end
 
 --- whether the items are the same, excluding slot and size
@@ -125,23 +124,48 @@ end
 function Item.makeIndex(self)
   return serialization.serialize(Item.getUItem(self))
   --   return Helper.makeIndexBetween(self, Item.name)
-
 end
 
 local function stripitemstr(item, slot)
-  return item and "{" ..
-           table.concat({slot or 0, item.size, "\"" .. item.name .. "\"", item.damage, "\"" .. item.label .. "\"",
-                         item.hasTag and "true" or "false", item.maxDamage, item.maxSize}, ",") .. "}"
+  return item and
+    "{" ..
+      table.concat(
+        {
+          slot or 0,
+          item.size,
+          '"' .. item.name .. '"',
+          item.damage,
+          '"' .. item.label .. '"',
+          item.hasTag and "true" or "false",
+          item.maxDamage,
+          item.maxSize
+        },
+        ","
+      ) ..
+        "}"
 end
 --- new version of stripitemstr in drones ver 0.1.1
 ---@param i table
 ---@param slot integer
 local function stis(i, slot)
   local h = db and db.computeHash(1) or "nil"
-  return i and "{" ..
-           table.concat(
-      {slot, i.size, "\"" .. i.name .. "\"", i.damage, "\"" .. i.label .. "\"", i.hasTag and "true" or "false",
-       i.maxDamage, i.maxSize, "\"" .. h .. "\""}, ",") .. "}"
+  return i and
+    "{" ..
+      table.concat(
+        {
+          slot,
+          i.size,
+          '"' .. i.name .. '"',
+          i.damage,
+          '"' .. i.label .. '"',
+          i.hasTag and "true" or "false",
+          i.maxDamage,
+          i.maxSize,
+          '"' .. h .. '"'
+        },
+        ","
+      ) ..
+        "}"
 end
 
 ---@param name string

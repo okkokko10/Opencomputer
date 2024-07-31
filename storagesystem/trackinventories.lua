@@ -48,7 +48,7 @@ function Inventory.write(iid, contents, space)
     if space and (space ~= inv.space) then
       inv.space = space
       Inventory.saveInventories()
-      -- signal change? 
+    -- signal change?
     end
     local file_path = inv.file
     filehelp.saveCSV(contents, file_path)
@@ -63,20 +63,24 @@ end
 --- is cached
 ---@param id IID
 ---@return Contents
----@return fun(write:boolean|nil):nil close(write) -- call this when closing. write is required to be true if the contents have been modified. not doing so is undefined 
+---@return fun(write:boolean|nil):nil close(write) -- call this when closing. write is required to be true if the contents have been modified. not doing so is undefined
 ---@return integer space taken
 function Inventory.read(id)
   local inv = Inventory.inventories[id]
   if inv then
     local file_path = inv.file
     local spacetaken = 0
-    local contents = Helper.mapWithKeys(filehelp.loadf(file_path), function(v) -- todo: replace with filehelp.loadCSV
-      local t = serialization.unserialize(v)
-      if t then
-        spacetaken = spacetaken + 1
-        return t, Item.getslot(t)
+    local contents =
+      Helper.mapWithKeys(
+      filehelp.loadf(file_path),
+      function(v) -- todo: replace with filehelp.loadCSV
+        local t = serialization.unserialize(v)
+        if t then
+          spacetaken = spacetaken + 1
+          return t, Item.getslot(t)
+        end
       end
-    end)
+    )
     return contents, function(write)
       if write then
         Inventory.write(id, contents)
@@ -106,7 +110,7 @@ function Inventory.getSpace(id)
   return Inventory.inventories[id].space
 end
 
---- update the inventory  
+--- update the inventory
 --- contents_new must be added only after contents_changed has been applied.
 ---@param id IID
 ---@param contents_changed table table of tuples (slot,change), representing how much the amount of something has increased or decreased
@@ -118,8 +122,8 @@ function Inventory.update(id, contents_changed, contents_new)
     if newsize == 0 then
       storage[slot] = nil
     elseif newsize < 0 then
-      error("amount changed to below 0")
       -- todo: error
+      error("amount changed to below 0")
     else
       Item.setsize(storage[slot], newsize)
     end
@@ -127,7 +131,7 @@ function Inventory.update(id, contents_changed, contents_new)
   for cont in contents_new do
     if storage[Item.getslot(cont)] then
       error("placed item in wrong slot")
-      -- todo: error
+    -- todo: error
     end
     storage[Item.getslot(cont)] = cont
   end
@@ -196,7 +200,6 @@ function Inventory.makeNew(id, nodeparent, x, y, z, side, isExternal, sizeMultip
     file = Inventory.makeNewInvFilePath(id)
   }
   return id
-
 end
 
 --- a part of Inventory that ensures Consistency (only modify data in allowed ways) and Isolation (transactions should either block or act sequential) from ACID
@@ -211,7 +214,6 @@ Inventory.Lock.remove_max = {}
 ---@param item Item
 ---@return boolean|integer if true, how much at most
 function Inventory.Lock.canAdd(id, slot, size, item)
-
   local current_item = Inventory.getInSlot(id, slot)
   if current_item and not Item.equals(item, current_item) then
     return false
@@ -247,7 +249,6 @@ end
 ---@param added_item Item
 ---@param precalculated_canAdd boolean|nil
 function Inventory.Lock.add_add_max(id, slot, size, added_item, precalculated_canAdd)
-
   if precalculated_canAdd or Inventory.Lock.canAdd(id, slot, size, added_item) then
     local current_added = Inventory.Lock.add_max[Helper.makeIndex(id, slot)]
     if current_added then
@@ -268,7 +269,6 @@ end
 ---@param item Item
 ---@return boolean|integer if true, how much at most
 function Inventory.Lock.canRemove(id, slot, size, item)
-
   local current_item = Inventory.getInSlot(id, slot)
   if not Item.equals(item, current_item) then
     return false
@@ -355,7 +355,6 @@ end
 ---@return boolean success
 function Inventory.Lock.startAdd(id, item, slot, size, precalculated_can)
   return Inventory.Lock.add_add_max(id, slot, size, item, precalculated_can)
-
 end
 
 --- starts removing an item from the slot.
