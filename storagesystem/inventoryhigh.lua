@@ -101,7 +101,7 @@ function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item)
     return Future.createInstant(false, "no item requested")
   end
   size = size or Item.getsize(item)
-  if not size or size == 0 then
+  if not size or size <= 0 then
     return Future.createInstant(false, "0 items requested")
   end
   if not ti.Lock.canRemove(from_iid, from_slot, size, item) then
@@ -132,17 +132,21 @@ end
 --- if the size is higher than maxSize, split it.
 ---@param foundAt FoundAt
 ---@param maxSize integer
+---@param atMost? integer -- take at most this much if it's less than the actual amount
 ---@return FoundAt[] -- same location as the input, but split
-local function splitFoundAt(foundAt, maxSize)
-  local out = {}
-  local fullAddSize = foundAt[3]
-  for _, addSize in ipairs(Helper.splitNumber(fullAddSize, maxSize)) do -- todo: express this as a map
-    local added = Helper.shallowCopy(foundAt)
-    added[3] = addSize
-    added[4] = 0 -- todo: this sets addable size to 0, just to make sure.
-    out[#out + 1] = added
-  end
-  return out
+---@return integer left -- how much is left of atMost
+local function splitFoundAt(foundAt, maxSize, atMost)
+  atMost = atMost or math.huge
+  local fullAddSize = math.min(foundAt[3], atMost)
+  return Helper.map(
+    Helper.splitNumber(fullAddSize, maxSize),
+    function(addSize, _)
+      local added = Helper.shallowCopy(foundAt)
+      added[3] = addSize
+      added[4] = 0 -- todo: this sets addable size to 0, just to make sure.
+      return added
+    end
+  ), atMost - fullAddSize
 end
 
 --- make an ItemFoundAt with finds limited to size.
@@ -164,7 +168,8 @@ function InventoryHigh.find(item, size, filterPosition)
       return a[3] < b[3]
     end
   )
-  local totalSize = 0
+  local totalSize = 0 -- todo factor this out
+  local needed = size
   ---@type FoundAt[]
   local out = {}
 
@@ -172,21 +177,24 @@ function InventoryHigh.find(item, size, filterPosition)
   for _, list_element in ipairs(copy_foundAtList) do
     if not filterPosition or filterPosition(list_element) then
       --- if addSize is higher than the item's natural stack size, split it
-      for _, added in ipairs(splitFoundAt(list_element, maxSize)) do
+      local split, new_needed = splitFoundAt(list_element, maxSize, needed)
+      needed = new_needed
+      for _, added in ipairs(split) do
         out[#out + 1] = added
-        if totalSize + added[3] >= size then
-          added[3] = size - totalSize
-          totalSize = size -- = totalSize + added[3]
-          break
-        end
         totalSize = totalSize + added[3]
+      end
+      assert(totalSize == size - needed)
+      if needed == 0 then
+        break
       end
     end
   end
-  local ite = Item.copy(item, nil, totalSize)
+  assert(totalSize == size - needed)
+
+  local ite = Item.copy(item, nil, size - needed)
   ---@cast ite ItemFoundAt
   ite.foundAtList = out
-  return ite, (totalSize == size)
+  return ite, (needed == 0)
 end
 
 ---gathers the item from around the system

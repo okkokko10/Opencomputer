@@ -125,11 +125,18 @@ function Helper.shallowCopy(target)
   return table.move(target, 1, #target, 1, {})
 end
 
----if num is larger than mod, splits it into multiple numbers that are at most mod.
+---if num is larger than mod, splits it into multiple numbers that are at most mod, and greater than 0.
+---all but the last element are equal to mod, and the last is the remainder (unless 0)
 ---@param num number
 ---@param mod number
 ---@return number[]
 function Helper.splitNumber(num, mod)
+  if num <= 0 then
+    if num < 0 then
+      error("num cannot be negative")
+    end
+    return {}
+  end
   local out = {}
   while num > mod do
     out[#out + 1] = mod
