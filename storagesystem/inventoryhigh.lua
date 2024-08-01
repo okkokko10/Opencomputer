@@ -16,6 +16,7 @@ local InventoryHigh = {}
 ---@field [1] IID -- iid
 ---@field [2] integer -- slot
 ---@field [3] integer -- size
+---@field [4] integer -- addable size
 
 --todo: get max_add and max_remove for FoundAt
 
@@ -26,26 +27,32 @@ function InventoryHigh.allItems()
   local all_items = {}
   local space = 0
   local space_taken = 0
-  local itemcounter = 1
+  local itemcounter = 0
   for iid, inventoryData in pairs(ti.inventories) do
     if not inventoryData.isExternal then
       local items, close = ti.read(iid)
       space = space + inventoryData.space
       for slot, item in pairs(items) do
         space_taken = space_taken + 1
+
+        -- local size = Item.getsize(item)
+
+        local size = ti.Lock.sizeRemovable(iid, slot, item)
+        local addable = ti.Lock.sizeAddable(iid, slot, item)
+
+        local position_info = {iid, slot, size, addable}
+
         local index = Item.makeIndex(item)
         local current = all_items[index]
-        local size = Item.getsize(item)
-        local position_info = {iid, slot, size}
         if current then
-          Item.setsize(current, Item.getsize(current) + size)
+          Item.addsize(current, size)
           table.insert(current.foundAtList, position_info)
         else
+          itemcounter = itemcounter + 1
           ---@type ItemFoundAt
           local copy = Item.copy(item, itemcounter, size) -- slot set to a new one, although size should be the same regardless.
-          itemcounter = itemcounter + 1
-          all_items[index] = copy
           copy.foundAtList = {position_info}
+          all_items[index] = copy
         end
       end
       close()
@@ -122,13 +129,30 @@ function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item)
   return finish
 end
 
+--- if the size is higher than maxSize, split it.
+---@param foundAt FoundAt
+---@param maxSize integer
+---@return FoundAt[] -- same location as the input, but split
+local function splitFoundAt(foundAt, maxSize)
+  local out = {}
+  local fullAddSize = foundAt[3]
+  for _, addSize in ipairs(Helper.splitNumber(fullAddSize, maxSize)) do -- todo: express this as a map
+    local added = Helper.shallowCopy(foundAt)
+    added[3] = addSize
+    added[4] = 0 -- todo: this sets addable size to 0, just to make sure.
+    out[#out + 1] = added
+  end
+  return out
+end
+
 --- make an ItemFoundAt with finds limited to size.
 --- prioritizes stacks that have less.
 --- splits stacks larger than the natural stack size into multiple.
---- returns secondary boolean foundEnough, which tells whether the main result has as much as needed
+--- returns secondary boolean foundEnough, which tells whether the main result has as much as needed.
+--- todo: foundAt addable size is not preserved
 ---@param item ItemFoundAt
 ---@param size integer
----@param filterPosition? fun(foundAt:FoundAt):boolean
+---@param filterPosition? fun(foundAt:FoundAt):boolean -- return false to not take from this
 ---@return ItemFoundAt
 ---@return boolean foundEnough
 function InventoryHigh.find(item, size, filterPosition)
@@ -147,35 +171,31 @@ function InventoryHigh.find(item, size, filterPosition)
   local maxSize = Item.getmaxSize(item)
   for _, list_element in ipairs(copy_foundAtList) do
     if not filterPosition or filterPosition(list_element) then
-      local fullAddSize = list_element[3]
       --- if addSize is higher than the item's natural stack size, split it
-      for _, addSize in ipairs(Helper.splitNumber(fullAddSize, maxSize)) do
-        local added = Helper.shallowCopy(list_element)
+      for _, added in ipairs(splitFoundAt(list_element, maxSize)) do
         out[#out + 1] = added
-        added[3] = addSize
-        if totalSize + addSize >= size then
+        if totalSize + added[3] >= size then
           added[3] = size - totalSize
-          local ite = Item.copy(item, nil, size)
-          ---@cast ite ItemFoundAt
-          ite.foundAtList = out
-          return ite, true
+          totalSize = size -- = totalSize + added[3]
+          break
         end
-        totalSize = totalSize + addSize
+        totalSize = totalSize + added[3]
       end
     end
   end
   local ite = Item.copy(item, nil, totalSize)
   ---@cast ite ItemFoundAt
   ite.foundAtList = out
-  return ite, false
+  return ite, (totalSize == size)
 end
 
 ---gathers the item from around the system
+--- returns a future that succeeds when all of the item is gathered
 ---@param to_iid IID
 ---@param to_slot integer
 ---@param size integer
 ---@param item Item|ItemFoundAt
----@return Future[]?
+---@return Future<nil>?
 function InventoryHigh.gather(to_iid, to_slot, size, item)
   local filterPosition = function(foundAt)
     return foundAt[1] ~= to_iid
@@ -186,7 +206,7 @@ function InventoryHigh.gather(to_iid, to_slot, size, item)
     for _, foundAt in ipairs(found.foundAtList) do
       completions[#completions + 1] = InventoryHigh.move(foundAt[1], foundAt[2], to_iid, to_slot, foundAt[3], item)
     end
-    return completions
+    return Future.combineAll(completions)
   else
     return nil
   end

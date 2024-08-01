@@ -8,7 +8,7 @@ local os = require "os"
 ---@generic T any
 ---@class Future<T>
 ---@field success boolean|nil -- true for success, false for error, nil for incomplete
----@field results table -- result of pcall(func, ...)
+---@field results table|nil -- result of pcall(func, ...)
 ---@field private t thread
 local Future = {}
 
@@ -260,14 +260,58 @@ end
 --- blocks until all futures are complete
 ---@param futures Future[]
 ---@param timeout? number seconds
+---@return boolean not_timed_out
 function Future.joinAll(futures, timeout)
   local threads = filtermapToThreads(futures)
   return thread.waitForAll(threads, timeout)
 end
 
--- todo
+---@deprecated todo
 -- waits for any of the futures to succeed. returns nil if timeout or all futures fail
 function Future.awaitAnySuccess(futures, timeout)
+end
+
+--- executes func when all are complete
+---@generic T
+---@param futures Future[]
+---@param func fun(resultses:table[],success:boolean|nil):T -- success: nil if timed out, true if all succeed, false if some fail
+---@param timeout any
+---@return Future<T>
+function Future.onAllComplete(futures, func, timeout)
+  return Future.create(
+    function()
+      local success = Future.joinAll(futures, timeout) or nil
+      local resultses =
+        Helper.map(
+        futures,
+        function(fut, key)
+          success = success and fut.success
+          return fut.results
+        end
+      )
+      return func(resultses, success)
+    end
+  )
+end
+
+---combines futures into a single future that succeeds if all succeed, and fails if any fail or timeout.
+---currently fails only once all have completed, not when any has failed
+---@param futures Future[]
+---@param timeout? number seconds
+---@return Future<nil>
+function Future.combineAll(futures, timeout)
+  return Future.onAllComplete(
+    futures,
+    function(resultses, success)
+      if success == false then
+        error("failure")
+      elseif success == nil then
+        error("timeout")
+      end
+      return nil
+    end,
+    timeout
+  )
 end
 
 return Future

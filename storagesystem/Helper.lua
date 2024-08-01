@@ -6,8 +6,10 @@ local event = require("event")
 local Helper = {}
 
 --- map
----@param target table
----@param fun function
+---@generic K,V,R
+---@param target table<K,V>
+---@param fun fun(value:V,key:K):R
+---@return table<K,R>
 function Helper.map(target, fun)
   local out = {}
   for key, value in pairs(target) do

@@ -307,6 +307,53 @@ function Inventory.Lock.canRemove(id, slot, size, item)
   end
 end
 
+---how much item can be removed from this slot?
+---@param iid IID
+---@param slot integer
+---@param current_item Item? -- precalculate Inventory.getInSlot(iid, slot)
+---@return integer
+function Inventory.Lock.sizeRemovable(iid, slot, current_item)
+  current_item = current_item or Inventory.getInSlot(iid, slot)
+
+  if not current_item then
+    error("no item compared")
+  end
+
+  local current_removed = Inventory.Lock.remove_max[Helper.makeIndex(iid, slot)]
+
+  local current_removed_size = current_removed and Item.getsize(current_removed) or 0
+
+  local current_size = Item.getsize(current_item)
+
+  local maxRemovable = current_size - current_removed_size
+
+  return maxRemovable
+end
+
+---how much item can be added to this slot?
+---@param iid IID
+---@param slot integer
+---@param current_item Item? -- precalculate Inventory.getInSlot(iid, slot)
+---@return integer
+function Inventory.Lock.sizeAddable(iid, slot, current_item)
+  current_item = current_item or Inventory.getInSlot(iid, slot) -- todo: current_item can be nil
+
+  if not current_item then
+    error("no item compared")
+  end
+
+  local current_size = current_item and Item.getsize(current_item) or 0
+
+  ---@type Item
+  local current_added = Inventory.Lock.add_max[Helper.makeIndex(iid, slot)]
+
+  local current_added_size = current_added and Item.getsize(current_added) or 0
+
+  local sizeMult = Inventory.getSizeMultiplier(iid)
+  local maxAddable = Item.getmaxSize(current_item) * sizeMult - current_size - current_added_size
+  return maxAddable
+end
+
 function Inventory.Lock.add_remove_max(id, slot, size, removed_item, precalculated_canRemove)
   if precalculated_canRemove or Inventory.Lock.canRemove(id, slot, size, removed_item) then
     local current_removed = Inventory.Lock.remove_max[Helper.makeIndex(id, slot)]

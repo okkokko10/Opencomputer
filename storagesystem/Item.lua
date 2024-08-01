@@ -65,10 +65,17 @@ function Item.getMod(self)
   return modname
 end
 
----@param item Item
+---@param self Item
 ---@param value integer
-function Item.setsize(item, value)
-  item.size = value
+function Item.setsize(self, value)
+  self.size = value
+end
+
+---adds to size in place
+---@param self Item
+---@param value integer
+function Item.addsize(self, value)
+  self.size = self.size + value
 end
 
 ---@param self Item
