@@ -119,4 +119,8 @@ function Helper.min(target, fun)
   return current_value, current_key
 end
 
+function Helper.shallowCopy(target)
+  return table.move(target, 1, #target, 1, {})
+end
+
 return Helper

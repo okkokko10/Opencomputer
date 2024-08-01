@@ -57,6 +57,7 @@ function Pool:register(object)
         poolidentifier = self.poolidentifier,
         index = i
     }
+    self:_free(i)
 end
 
 ---comment
@@ -83,10 +84,14 @@ function Pool:_call(usage, promise, i)
     )
     body:onComplete(
         function()
-            event.push("Pool", self.poolidentifier, "freed", i)
+            self:_free(i)
         end
     )
     promise:completeWith(body)
+end
+
+function Pool:_free(i)
+    event.push("Pool", self.poolidentifier, "freed", i)
 end
 
 function Pool:_do_queue(q)

@@ -79,7 +79,7 @@ local function receiveEcho(address, message, distance)
         api.actions.echo("register fetcher z"),
         api.actions.move(0, 0, -1),
         api.actions.echo("register fetcher o"),
-        api.actions.execute("ofs=0.1;vel=1")
+        api.actions.execute("ofs=0.1;vel=2")
       )
     end
   elseif message == "register fetcher x" then

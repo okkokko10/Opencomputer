@@ -10,7 +10,14 @@ local Future = require "Future"
 local InventoryHigh = {}
 
 ---@class ItemFoundAt: Item
----@field foundAt table
+---@field foundAtList FoundAt[]
+
+---@class FoundAt
+---@field [1] IID -- iid
+---@field [2] integer -- slot
+---@field [3] integer -- size
+
+--todo: get max_add and max_remove for FoundAt
 
 -- returns a table of all items, with slot set to 1, size being a sum of all of that item,
 -- and with an extra index: foundAt, which tracks positions that the item is found at and how many there are there
@@ -23,7 +30,7 @@ function InventoryHigh.allItems()
   for iid, inventoryData in pairs(ti.inventories) do
     if not inventoryData.isExternal then
       local items, close = ti.read(iid)
-      space = space + ti.getSpace(iid)
+      space = space + inventoryData.space
       for slot, item in pairs(items) do
         space_taken = space_taken + 1
         local index = Item.makeIndex(item)
@@ -32,13 +39,13 @@ function InventoryHigh.allItems()
         local position_info = {iid, slot, size}
         if current then
           Item.setsize(current, Item.getsize(current) + size)
-          table.insert(current.foundAt, position_info)
+          table.insert(current.foundAtList, position_info)
         else
           ---@type ItemFoundAt
           local copy = Item.copy(item, itemcounter, size) -- slot set to a new one, although size should be the same regardless.
           itemcounter = itemcounter + 1
           all_items[index] = copy
-          copy.foundAt = {position_info}
+          copy.foundAtList = {position_info}
         end
       end
       close()
@@ -47,6 +54,7 @@ function InventoryHigh.allItems()
   return all_items, space, space_taken
 end
 
+---@deprecated
 function InventoryHigh.scanAllOne()
   local instr =
     DroneInstruction.join(
@@ -73,11 +81,11 @@ function InventoryHigh.scanAll()
 end
 
 --- takes an item from one inventory slot to another
----@param from_iid number
----@param from_slot number
----@param to_iid number
----@param to_slot number
----@param size number
+---@param from_iid IID
+---@param from_slot integer
+---@param to_iid IID
+---@param to_slot integer
+---@param size integer
 ---@param item? Item
 ---@return Future completion
 function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item)
@@ -112,6 +120,67 @@ function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item)
     end
   )
   return finish
+end
+
+--- make an ItemFoundAt with finds limited to size.
+--- prioritizes stacks that have less
+---@param item ItemFoundAt
+---@param size integer
+---@param filterPosition? fun(foundAt:FoundAt):boolean
+---@return ItemFoundAt?
+function InventoryHigh.find(item, size, filterPosition)
+  ---@type FoundAt[]
+  local copy_foundAtList = Helper.shallowCopy(item.foundAtList)
+  table.sort(
+    copy_foundAtList,
+    function(a, b)
+      return a[3] < b[3]
+    end
+  )
+  local totalSize = 0
+  ---@type FoundAt[]
+  local out = {}
+
+  local maxSize = Item.getmaxSize(item)
+
+  for i = 1, #copy_foundAtList do
+    if not filterPosition or filterPosition(copy_foundAtList[i]) then
+      out[#out + 1] = Helper.shallowCopy(copy_foundAtList[i])
+      --- todo: if addSize is higher than the item's natural stack size, split it
+      local addSize = copy_foundAtList[i][3]
+      if totalSize + addSize >= size then
+        out[#out][3] = size - totalSize
+        local ite = Item.copy(item, nil, size)
+        ---@cast ite ItemFoundAt
+        ite.foundAtList = out
+        return ite
+      end
+      totalSize = totalSize + addSize
+    end
+  end
+  return nil -- not enough
+end
+
+---gathers the item from around the system
+---@param to_iid IID
+---@param to_slot integer
+---@param size integer
+---@param item Item|ItemFoundAt
+---@return Future[]?
+function InventoryHigh.gather(to_iid, to_slot, size, item)
+  local filterPosition = function(foundAt)
+    return foundAt[1] ~= to_iid
+  end
+  local found = InventoryHigh.find(item, size, filterPosition)
+  if found then
+    local completions = {}
+    for index, foundAt in ipairs(found.foundAtList) do
+      completions[#completions + 1] = InventoryHigh.move(foundAt[1], foundAt[2], to_iid, to_slot, foundAt[3], item)
+    end
+    return completions
+  else
+    return nil
+  end
 end
 
 -- when a filter is added to, it should compare the old filtered, because adding to a filter can only remove items

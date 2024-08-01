@@ -13,12 +13,22 @@ local Inventory = {}
 
 ---@alias Contents Item[]
 ---@alias IID number|string
+---@alias Side integer
 
 Inventory.Item = Item
 Inventory.INVENTORIES_PATH = "/usr/storage/inventories.csv"
 Inventory.FILENAME_START = "/usr/storage/invs/inv_"
 
+---@class InventoryData
+---@field id IID
+---@field side Side
+---@field space integer
+---@field isExternal boolean
+---@field sizeMultiplier number
+---@field file string
+
 -- {id=?, nodeparent=?, x=?, y=?, z=?, side=?, space=?, isExternal=?, sizeMultiplier=1, file="?/?.csv"}
+---@type table<IID,InventoryData>
 Inventory.inventories = filehelp.loadCSV(Inventory.INVENTORIES_PATH)
 
 --- gets inventory data
