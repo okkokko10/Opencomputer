@@ -123,4 +123,18 @@ function Helper.shallowCopy(target)
   return table.move(target, 1, #target, 1, {})
 end
 
+---if num is larger than mod, splits it into multiple numbers that are at most mod.
+---@param num number
+---@param mod number
+---@return number[]
+function Helper.splitNumber(num, mod)
+  local out = {}
+  while num > mod do
+    out[#out + 1] = mod
+    num = num - mod
+  end
+  out[#out + 1] = num
+  return out
+end
+
 return Helper
