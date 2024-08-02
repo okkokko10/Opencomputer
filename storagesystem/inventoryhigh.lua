@@ -83,7 +83,7 @@ function InventoryHigh.scanAll()
   --   return DroneInstruction.scan(inv_data.id)
   -- end)
   for k, inv_data in pairs(ti.inventories) do
-    DroneInstruction.scan(inv_data.id):queueExecute()
+    DroneInstruction.scan(inv_data.id):queueExecute() -- todo: make a combined future.
   end
 end
 

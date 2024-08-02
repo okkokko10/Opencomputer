@@ -38,3 +38,10 @@ ih.move(1, 1, 2, 10, 3)
 -- for k, v in pairs(ih.allItems()) do print(v.size,Item.getlabel(v)) end
 
 -- event.listen("tablet_use",function(_,tbl) print(serialization.serialize(tbl));computer.beep(200,0.1) end)
+
+-- timer_last = 0; function timer() local temp = timer_last; timer_last = timer_func(); return timer_last - temp end; timer_func = computer.uptime
+
+component.gpu.setActiveBuffer(1)
+
+-- component.gpu.setActiveBuffer(1); timer(); for i = 1, 10000 do component.gpu.set(i % 100, i % 31, "ABC") end;component.gpu.setActiveBuffer(0); print(timer())
+-- component.gpu.setActiveBuffer(0); timer(); for i = 1, 10000 do component.gpu.setBackground(1) end;component.gpu.setActiveBuffer(0); print(timer())
