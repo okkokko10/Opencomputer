@@ -20,6 +20,10 @@ _______ -- search
 
 -- double click a row to request it, bringing up amount
 
+-- choose item amount: 
+1234567890123456789012345678901234567890123456789012345678901234 [^] [v]
+(each row of 10 has a different color)
+--- the chosen slider position has a different color, and after it the colors are grayscale
 
 
 

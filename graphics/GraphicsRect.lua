@@ -41,12 +41,16 @@ function GraphicsRect:create(x, y, w, h, children)
 end
 
 ---notes the parent that this is dirty.
-function GraphicsRect:noteDirty()
+---@param notThis? boolean -- if false, sets dirty=true
+function GraphicsRect:noteDirty(notThis)
+    if not notThis then
+        self.dirty = true
+    end
     if self.parent then
         self.parent.children_dirty[self.parent_index] = true
         if not self.parent.children_dirty_any then
             self.parent.children_dirty_any = true
-            self.parent:noteDirty()
+            self.parent:noteDirty(true)
         end
     end
 end

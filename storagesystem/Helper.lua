@@ -127,10 +127,13 @@ end
 
 ---if num is larger than mod, splits it into multiple numbers that are at most mod, and greater than 0.
 ---all but the last element are equal to mod, and the last is the remainder (unless 0)
+---optionally first lets the first element be a different size.
 ---@param num number
 ---@param mod number
+---@param first? number
 ---@return number[]
-function Helper.splitNumber(num, mod)
+function Helper.splitNumber(num, mod, first)
+  assert(mod > 0)
   if num <= 0 then
     if num < 0 then
       error("num cannot be negative")
@@ -138,11 +141,18 @@ function Helper.splitNumber(num, mod)
     return {}
   end
   local out = {}
+  if first and first > 0 then
+    out[1] = math.min(first, num)
+    num = num - out[1]
+  end
+
   while num > mod do
     out[#out + 1] = mod
     num = num - mod
   end
-  out[#out + 1] = num
+  if num > 0 then
+    out[#out + 1] = num
+  end
   return out
 end
 
