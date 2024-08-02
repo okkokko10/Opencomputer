@@ -111,7 +111,7 @@ function GraphicsDraw:set(x, y, value, foreground, background, vertical)
     end
     local maxLength = vertical and (self.h - y) or (self.w - x)
     if #value > maxLength then
-        value = string.sub(value, 1, maxLength)
+        value = string.sub(value, 1, maxLength) --+ string.rep("x", #value - maxLength)
     end
     self:enter()
     self:setForeground(foreground)

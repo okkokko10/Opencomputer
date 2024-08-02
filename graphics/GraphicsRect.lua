@@ -81,11 +81,13 @@ end
 ---@param playerName string
 ---@return boolean consumed
 function GraphicsRect:_onClick(x, y, button, playerName)
+    x = x - self.x
+    y = y - self.y
     if not (0 <= x and x < self.w and 0 <= y and y < self.h) then
         return false
     end
     for i, child in pairs(self.children) do
-        local consumed = child:_onClick(x - child.x, y - child.y, button, playerName)
+        local consumed = child:_onClick(x, y, button, playerName)
         if consumed then
             return true
         end
