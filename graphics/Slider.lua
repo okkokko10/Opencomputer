@@ -121,14 +121,14 @@ function Slider:draw(graphicsDraw)
     local old_color = graphicsDraw.gpu_data.gpu.getBackground()
     --- todo: limit color changes to 3 by drawing in a different order
     local function rightColor(i)
-        if i % 2 == 0 then
+        if i % 2 == 1 then
             return self.left_fore_A, self.left_back_A
         else
             return self.left_fore_B, self.left_back_B
         end
     end
     local function leftColor(i)
-        if i % 2 == 0 then
+        if i % 2 == 1 then
             return self.right_fore_A, self.right_back_A
         else
             return self.right_fore_B, self.right_back_B
@@ -141,11 +141,12 @@ function Slider:draw(graphicsDraw)
 
     local value_split = Helper.splitNumber(self.value, self.checker_interval)
     -- Helper.splitNumber(self.size - self.value, 10, 10 - self.value % 10)
-    local size_offset = math.max(#value_split - 1, 0) * self.checker_interval
+    local number_offset = math.max(#value_split - 1, 0)
+    local size_offset = number_offset * self.checker_interval
     local size_split = Helper.splitNumber(self.size - size_offset, self.checker_interval)
     local total = size_offset -- the greater part is drawn first, so it can be drawn over
     for index, value in ipairs(size_split) do
-        local fore, back = rightColor(index + #value_split)
+        local fore, back = rightColor(index + number_offset)
         graphicsDraw:set(dx * total, dy * total, string.rep(self.fillchar, value), fore, back, self.vertical)
         total = total + value
     end

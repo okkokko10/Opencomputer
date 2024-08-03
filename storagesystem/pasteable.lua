@@ -45,3 +45,5 @@ component.gpu.setActiveBuffer(1)
 
 -- component.gpu.setActiveBuffer(1); timer(); for i = 1, 10000 do component.gpu.set(i % 100, i % 31, "ABC") end;component.gpu.setActiveBuffer(0); print(timer())
 -- component.gpu.setActiveBuffer(0); timer(); for i = 1, 10000 do component.gpu.setBackground(1) end;component.gpu.setActiveBuffer(0); print(timer())
+
+-- for i = 1,100,4 do print(i,string.char(i,i+1,i+2,i+3)) end

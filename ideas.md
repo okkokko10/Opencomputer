@@ -188,3 +188,7 @@ how to handle multiple bases? set up a "relay" ender chest
 
 
 Special inventories where the move function itself is different. for example a detached system accessible through a relay chest: before you reserve a drone you have to send out an order to it.
+
+
+graphics color palette
+graphics color string
