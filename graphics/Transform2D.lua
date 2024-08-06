@@ -34,13 +34,15 @@ function Transform2D:create(xx, xy, xo, yx, yy, yo)
 end
 
 function Transform2D:Move(x, y)
-    return Transform2D:create(1, 0, 0, 1, x, y)
+    return Transform2D:create(1, 0, x, 0, 1, y)
 end
 
 --- Move(1,1)
 Transform2D.OneOne = Transform2D:Move(1, 1)
 
-Transform2D.Identity = Transform2D:create(1, 0, 0, 1, 0, 0)
+Transform2D.Identity = Transform2D:create(1, 0, 0, 0, 1, 0)
+
+Transform2D.Transposition = Transform2D:create(0, 1, 0, 1, 0, 0)
 
 --- combines two transforms
 --- ```

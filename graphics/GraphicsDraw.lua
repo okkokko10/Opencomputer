@@ -171,15 +171,30 @@ end
 function GraphicsDraw:drawColorTextStrip(strip)
     -- self:setColors(colorText.fg, colorText.bg)
     local vertical, reverse = self.transform:vertical_reverse()
+    if strip.anchor then
+        vertical, reverse = false, false
+    end
     if reverse then
         strip = ColorText.reverse(strip)
     end
-    self:setText(strip.column, strip.row, strip.text, strip.fg, strip.bg, vertical)
+    self:setColors(strip.fg, strip.bg)
+    local x1, y1
+    if strip.anchor then
+        local ax, ay = table.unpack(strip.anchor)
+        x1, y1 = self.transform:apply(ax, ay)
+        x1 = x1 + strip.column - ax
+        y1 = y1 - strip.row - ay
+    else
+        x1, y1 = self.transform:apply(strip.column, strip.row)
+    end
+    return self.gpu_data.gpu.set(x1, y1, strip.text, vertical)
 end
 
+---comment
+---@param texts ColorTextStrip[]
 function GraphicsDraw:drawColorText(texts)
     for index, value in ipairs(texts) do
-        GraphicsDraw:drawColorTextStrip(value)
+        self:drawColorTextStrip(value)
     end
 end
 

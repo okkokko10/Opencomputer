@@ -11,6 +11,7 @@ local Helper = require "Helper"
 ---@field length integer
 ---@field column integer -- how much is the text offset to the right. can be negative
 ---@field row integer
+---@field anchor? [integer,integer]
 
 local ColorText = {}
 
@@ -53,10 +54,40 @@ function ColorText.tocolor(str)
 end
 
 ---formats a string to a sequence of ColorTextStrip.
+--[[
+    special character ¤
+    ¤0xFFFFFF: to change background color
+    ¤0xFFFFFF- to change foreground color
+    ¤XXX= to get arguments.XXX
+    \n and \b work. internally they are replaced by ¤\n! (do not type that, that would result in ¤¤\n!!)
+    ¤XXX< to open a box and ¤> to close it. closing a box sets the colors back to how they were before opening. todo: can determine if it can be repeated when doing a pattern.
+    ¤r< ¤r> to unrotate text, making sure it's upright. 
+    todo: a <> that returns the line back
+    ¤{XXX} to replace with result of load("XXX")(arguments)
+]]
 ---@param str string
 ---@param arguments? table<string,string>
+---@param env? table environment for loadable
 ---@return ColorTextStrip[]
-function ColorText.format(str, arguments)
+function ColorText.format(str, arguments, env)
+    str =
+        string.gsub(
+        str,
+        "¤(%b{})",
+        function(captured)
+            local func, err = load(string.sub(captured, 2, -2), nil, nil, env)
+            if func then
+                local ok, res = pcall(func, arguments)
+                if ok then
+                    return tostring(res)
+                else
+                    return res
+                end
+            else
+                return err
+            end
+        end
+    )
     if arguments then
         str = string.gsub(str, "¤(.-)=", arguments)
     end
@@ -71,6 +102,7 @@ function ColorText.format(str, arguments)
     local bg_stack = {}
     local fg_stack = {}
     local stack_size = 0
+    local anchor = nil
 
     for color, special, text in string.gmatch(str, ColorText.gmatch_pattern) do
         if special == "-" then
@@ -81,11 +113,17 @@ function ColorText.format(str, arguments)
             stack_size = stack_size + 1
             bg_stack[stack_size] = bg
             fg_stack[stack_size] = fg
+            if color == "r" then
+                anchor = {column, row}
+            end
         elseif special == ">" then -- closes a box
             bg = bg_stack[stack_size]
             fg = fg_stack[stack_size]
             stack_size = stack_size - 1
             assert(stack_size >= 0)
+            if color == "r" then
+                anchor = nil
+            end
         elseif special == "!" then
             -- color == "" means this is the beginning string
             if color == "\n" then
@@ -98,7 +136,9 @@ function ColorText.format(str, arguments)
 
         local length = #text
         if length > 0 then
-            texts[#texts + 1] = ColorText.create(text, fg, bg, length, column, row)
+            local new = ColorText.create(text, fg, bg, length, column, row)
+            new.anchor = anchor
+            texts[#texts + 1] = new
             column = column + length
         end
     end
@@ -127,7 +167,8 @@ end
 ---@param columns integer
 ---@param rows integer
 function ColorText.move(colorText, columns, rows)
-    return ColorText.create(
+    local ct =
+        ColorText.create(
         colorText.text,
         colorText.fg,
         colorText.bg,
@@ -135,6 +176,11 @@ function ColorText.move(colorText, columns, rows)
         colorText.column + columns,
         colorText.row + rows
     )
+    if colorText.anchor then
+        local ax, ay = table.unpack(colorText.anchor)
+        ct.anchor = {ax + columns, ay + rows}
+    end
+    return ct
 end
 
 ---comment
@@ -197,6 +243,7 @@ function ColorText.continuePattern(texts, start, stop)
     local height_add = 0
     while width_add + width <= start do
         width_add = width_add + width
+        height_add = height_add + height
     end
     local out = {}
     while true do
