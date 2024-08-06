@@ -192,3 +192,5 @@ Special inventories where the move function itself is different. for example a d
 
 graphics color palette
 graphics color string
+
+drone pool: add capability to shut down drones. drones: add capability to descend onto the ground when shutting down

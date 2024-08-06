@@ -1,10 +1,8 @@
----@class Rect
----@field x number
----@field y number
+---@class TRect: HasTransform
 ---@field w number
 ---@field h number -- <y+h is the exclusive edge. when h=1, the rect is 1 row high
 
----@class GraphicsRect: Rect
+---@class GraphicsRect: TRect
 ---@field children GraphicsRect[]
 ---@field parent? GraphicsRect
 ---@field parent_index? integer
@@ -15,13 +13,12 @@ local GraphicsRect = {}
 
 GraphicsRect.__index = GraphicsRect
 
-function GraphicsRect:create(x, y, w, h, children)
+function GraphicsRect:create(transform, w, h, children)
     self.__index = self
     local gRect =
         setmetatable(
         {
-            x = x,
-            y = y,
+            transform = transform,
             w = w,
             h = h,
             children = children or {},
@@ -75,14 +72,13 @@ function GraphicsRect:_draw(graphicsDraw_nonlocal, force)
 end
 
 ---internal when clicked.
----@param x number
----@param y number
+---@param nl_x number
+---@param nl_y number
 ---@param button number
 ---@param playerName string
 ---@return boolean consumed
-function GraphicsRect:_onClick(x, y, button, playerName)
-    x = x - self.x
-    y = y - self.y
+function GraphicsRect:_onClick(nl_x, nl_y, button, playerName)
+    local x, y = self.transform:invert(nl_x, nl_y)
     if not (0 <= x and x < self.w and 0 <= y and y < self.h) then
         return false
     end
@@ -100,9 +96,9 @@ end
 function GraphicsRect:draw(graphicsDraw)
     -- temp function:
     graphicsDraw:fill(" ")
-    graphicsDraw:set(0, 0, string.rep("^", self.w), 0x00FF70)
-    graphicsDraw:set(0, self.h - 1, string.rep("_", self.w), 0x00FF70)
-    graphicsDraw:set(0, self.h, string.rep("x", self.w), 0x00FF70) -- this shouldn't be visible
+    graphicsDraw:setText(0, 0, string.rep("^", self.w), 0x00FF70)
+    graphicsDraw:setText(0, self.h - 1, string.rep("_", self.w), 0x00FF70)
+    graphicsDraw:setText(0, self.h, string.rep("x", self.w), 0x00FF70) -- this shouldn't be visible
 end
 
 --- overload this. return if the click is consumed.
