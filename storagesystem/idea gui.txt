@@ -9,6 +9,16 @@
 
 -- show amount of items visually with a bar (behind them?)
 
+minecraft:
+ stone
+ oak planks
+ oak stairs --- in this line "oak" will be grayed out
+
+
+items can get additional categories. have a keybind to add to a category.
+have a keybind that sets the next key to be pressed as the mouse button action
+a button in the list that applies the action to all items on page, and all items (in the filter)
+shift-click to choose multiple elements. shift-drag as well. chosen items have a blue background
 
 
 
@@ -25,10 +35,12 @@ _______ -- search
 (each row of 10 has a different color)
 --- the chosen slider position has a different color, and after it the colors are grayscale
 
+-- when filtering, try to have the items on the current page stay visible
 
+a "focus" that only one element can have at a time. 
+key events should mostly only register when focused, but that isn't forced.
+pageup/pagedown, scroll (should be in click)
 
-
-
-
+when sorted by mod, then name, show the mod category as a header
 
 

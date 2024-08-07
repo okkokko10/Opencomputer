@@ -53,6 +53,9 @@ function ColorText.tocolor(str)
     return tonumber(str) or ColorText.colors[string.lower(str)] or error("invalid color: " .. tostring(str))
 end
 
+--- todo: find unformatted position of a real position.
+--- todo: use that to "color a specific area"
+
 ---formats a string to a sequence of ColorTextStrip.
 --[[
     special character ¤
@@ -63,6 +66,9 @@ end
     ¤XXX< to open a box and ¤> to close it. closing a box sets the colors back to how they were before opening. todo: can determine if it can be repeated when doing a pattern.
     ¤r< ¤r> to unrotate text, making sure it's upright. 
     todo: a <> that returns the line back
+    todo: a <> that looks at the previous conditional result, and gets skipped if false. also flips that result so the next such <> gets skipped
+    todo: a <> that applies a function to all colors in it.
+    todo: a <> that makes all colors within it mix with its content
     ¤{XXX} to replace with result of load("XXX")(arguments)
 ]]
 ---@param str string

@@ -12,9 +12,9 @@ local slider =
     Slider:create(
     Transform2D:Move(5, 5),
     64,
-    "¤r<¤value_floor=¤r>v",
-    "¤0x0000FF-::::::::¤0xFF0000-||||",
-    "¤0x00FF00-........¤0x800000-****"
+    "¤r<¤value_floor¤r>v",
+    "¤0xFF0000-|¤0x0000FF-:::::::",
+    "¤0x800000->¤0x00FF00-......."
 )
 
 local main_rect = GraphicsRect:create(Transform2D.OneOne, rx, ry, {slider})
