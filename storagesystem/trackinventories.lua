@@ -29,7 +29,7 @@ Inventory.FILENAME_START = "/usr/storage/invs/inv_"
 
 -- {id=?, nodeparent=?, x=?, y=?, z=?, side=?, space=?, isExternal=?, sizeMultiplier=1, file="?/?.csv"}
 ---@type table<IID,InventoryData>
-Inventory.inventories = filehelp.loadCSV(Inventory.INVENTORIES_PATH)
+Inventory.inventories = filehelp.loadCSV(Inventory.INVENTORIES_PATH, "id")
 
 --- gets inventory data
 --- counts as a Location

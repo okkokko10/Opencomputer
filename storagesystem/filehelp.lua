@@ -150,19 +150,20 @@ if filehelp.AUTOSAVE_DEFAULT > 0 then
   filehelp.autosaveSetup(filehelp.AUTOSAVE_DEFAULT)
 end
 
---- loads a table of tables from a file, with their element keyname="id" determining their index.
+--- loads a table of tables from a file, with their element keyname determining their index (or any sequence).
 ---@param filepath string
 ---@param keyname string|integer|nil
 ---@return table
 function filehelp.loadCSV(filepath, keyname)
-  keyname = keyname or "id"
   local amount = 0 -- unimplemented
   return Helper.mapWithKeys(
     filehelp.loadf(filepath),
     function(line)
       local out = serialization.unserialize(line) -- empty file
-      amount = amount + 1
-      return out, out and out[keyname]
+      if out then
+        amount = amount + 1
+      end
+      return out, out and (keyname and out[keyname] or amount)
     end
   )
 end

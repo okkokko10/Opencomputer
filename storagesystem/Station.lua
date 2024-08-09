@@ -2,13 +2,18 @@ local Pool = require "Pool"
 local Helper = require "Helper"
 local InventoryHigh = require "inventoryhigh"
 local Future = require "Future"
+local longmsg_message = require "longmsg_message"
+local filehelp = require "filehelp"
 
 ---@class Station
 local Station = {}
 
 ---@class StationInstance
+---@field id string
 ---@field class string
----@field getInputSlots fun(self)
+---@field getInputSlots fun(self):InventorySlot[]
+---@field getOutputSlots fun(self):InventorySlot[]
+---@field activateStation fun(self,times) -- blocks
 
 ---@type Pool --<StationInstance>
 Station.pool = Pool.create()
@@ -19,6 +24,7 @@ Station.classes = {}
 
 ---@class CraftingRobot: StationInstance
 ---@field iid IID
+---@field address Address
 Station.classes.craftingRobot = {
     class = "crafting"
 }
@@ -35,6 +41,12 @@ function Station.classes.craftingRobot.getInputSlots(self)
 end
 function Station.classes.craftingRobot.getOutputSlots(self)
     return {{self.iid, 13}}
+end
+
+function Station.classes.craftingRobot.activateStation(self, times)
+    longmsg_message.sendmessage("craft_command", tostring(times), nil, self.address)
+    longmsg_message.pullTable({remoteAddress = self.address, name = "craft_complete"})
+    -- todo: create crafter program
 end
 
 ---places the items for the recipe in the station
@@ -60,12 +72,11 @@ function Station.prepareRecipe(stationInstance, recipe, times)
     return Future.combineAll(futures)
 end
 
----do whatever is needed to activate the station. returns future of the activation
+---do whatever is needed to activate the station. blocks until completion
 ---@param stationInstance StationInstance
 ---@param times integer
----@return Future
 function Station.activateStation(stationInstance, times)
-    return stationInstance:activateStation(times)
+    stationInstance:activateStation(times)
 end
 
 function Station.emptyOutputs(stationInstance, recipe, times)
@@ -83,12 +94,15 @@ end
 ---@param times integer -- watch out: should not be larger than what can be stacked.
 function Station.executeRecipe(stationInstance, recipe, times)
     Station.prepareRecipe(stationInstance, recipe, times):awaitResult()
-    Station.activateStation(stationInstance, times):awaitResult()
+    Station.activateStation(stationInstance, times)
     Station.emptyOutputs(stationInstance, recipe, times):awaitResult()
 end
 
-function Station.register(station)
-    -- todo
+---comment
+---@param stationInstance StationInstance
+function Station.register(stationInstance)
+    Station.pool:register(stationInstance)
+    -- todo: save instances
 end
 
 ---comment
@@ -107,6 +121,24 @@ function Station.queue(recipe, times)
                 return nil
             end
         end
+    )
+end
+
+Station.STATIONS_PATH = "/usr/storage/stations.txt"
+
+for index, value in ipairs(filehelp.loadCSV(Station.STATIONS_PATH)) do
+    Station.register(value)
+end
+
+function Station.save()
+    filehelp.saveCSV(
+        Helper.map(
+            Station.pool.objects,
+            function(value, key)
+                return value.object
+            end
+        ),
+        Station.STATIONS_PATH
     )
 end
 
