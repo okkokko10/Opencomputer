@@ -1,10 +1,11 @@
 local Item = require "Item"
+local inventoryhigh = require "inventoryhigh"
 
 ---@class Recipe
 ---@field outputItem Item
----@field needed Item[]
----@field machineType string
----@field using table
+---@field needed Item[] -- no repeats
+---@field stationType string
+---@field using [integer,integer][][] -- using[i] is a list of [index,size], which tells where needed[i] is spread
 ---@field extra any
 local Recipe = {}
 
@@ -14,18 +15,18 @@ recipe: {
   needed= {
     item,item... -- with size
   },
-  machineType: string,
+  stationType: string,
   using= {
-    ... -- machine specific. for crafting tells what slots items go into
+    ... -- station specific. for crafting tells what slots items go into
   },
-  extra: any -- machine specific
+  extra: any -- station specific
 }
 
-machineType: {
-  fun(machineInstance)
+stationType: {
+  fun(stationInstance)
 }
 
-machine: {
+station: {
 }
 
 ]]
@@ -35,6 +36,18 @@ machine: {
 function Recipe.getRecipe(item)
   -- todo, dummy
   return
+end
+
+function Recipe:CraftNaive()
+end
+
+---non-recursively
+---@param times integer
+---@return Future
+function Recipe:CraftSelf(times)
+end
+
+function Recipe:FindNeeded()
 end
 
 return Recipe

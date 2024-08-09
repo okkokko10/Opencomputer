@@ -125,9 +125,12 @@ function Item.copy(self, slot, size)
   -- return {slot or self[1], size or self[2], self[3], self[4], self[5], self[6], self[7], self[8]}
 end
 
+---string representation of an item, so that it can be indexed
+---@alias itemIndex string
+
 --- makes a string that is same for all of the same type of item
 ---@param self Item
----@return string
+---@return itemIndex
 function Item.makeIndex(self)
   return serialization.serialize(Item.getUItem(self))
   --   return Helper.makeIndexBetween(self, Item.name)

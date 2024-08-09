@@ -298,7 +298,7 @@ end
 ---currently fails only once all have completed, not when any has failed
 ---@param futures Future[]
 ---@param timeout? number seconds
----@return Future<nil>
+---@return Future ---<nil>
 function Future.combineAll(futures, timeout)
   return Future.onAllComplete(
     futures,

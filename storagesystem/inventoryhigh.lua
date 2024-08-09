@@ -20,10 +20,14 @@ local InventoryHigh = {}
 
 --todo: get max_add and max_remove for FoundAt
 
+-- todo: save allItems.
 -- returns a table of all items, with slot set to 1, size being a sum of all of that item,
 -- and with an extra index: foundAt, which tracks positions that the item is found at and how many there are there
+---@return table<itemIndex, ItemFoundAt> all_items
+---@return integer space
+---@return integer space_taken
 function InventoryHigh.allItems()
-  ---@type table<string,ItemFoundAt>
+  ---@type table<itemIndex,ItemFoundAt>
   local all_items = {}
   local space = 0
   local space_taken = 0
@@ -149,19 +153,38 @@ local function splitFoundAt(foundAt, maxSize, atMost)
   ), atMost - fullAddSize
 end
 
+---if item is not ItemFoundAt, get its corresponding one.
+---returns an item with 0 size if there is none
+---@param item Item|ItemFoundAt
+---@return ItemFoundAt
+function InventoryHigh.getItemFoundAt(item)
+  if item.foundAtList then
+    return item
+  else
+    local all_items = InventoryHigh.allItems()
+    local out = all_items[Item.makeIndex(item)]
+    if not out then
+      out = Item.copy(item, 0, 0)
+      ---@cast out ItemFoundAt
+      out.foundAtList = {}
+    end
+    return out
+  end
+end
+
 --- make an ItemFoundAt with finds limited to size.
 --- prioritizes stacks that have less.
 --- splits stacks larger than the natural stack size into multiple.
 --- returns secondary boolean foundEnough, which tells whether the main result has as much as needed.
 --- todo: foundAt addable size is not preserved
----@param item ItemFoundAt
+---@param item Item|ItemFoundAt
 ---@param size integer
 ---@param filterPosition? fun(foundAt:FoundAt):boolean -- return false to not take from this
 ---@return ItemFoundAt
 ---@return boolean foundEnough
 function InventoryHigh.find(item, size, filterPosition)
   ---@type FoundAt[]
-  local copy_foundAtList = Helper.shallowCopy(item.foundAtList)
+  local copy_foundAtList = Helper.shallowCopy(InventoryHigh.getItemFoundAt(item).foundAtList)
   table.sort(
     copy_foundAtList,
     function(a, b)
@@ -218,6 +241,52 @@ function InventoryHigh.gather(to_iid, to_slot, size, item)
   else
     return nil
   end
+end
+
+---gathers the item from around the system
+--- returns a future that succeeds when all of the item is gathered
+--- puts the item in each of the slots
+---@param item Item|ItemFoundAt
+---@param targets FoundAt[]
+---@return Future<nil>?
+function InventoryHigh.gatherSpread(item, targets)
+  local itemsNeeded = 0
+  for index, foundAt in ipairs(targets) do
+    itemsNeeded = itemsNeeded + foundAt[3]
+  end
+
+  local found = InventoryHigh.find(item, itemsNeeded)
+  if found then
+    local completions = {}
+    local i = 1
+    --- size still needed at targets[i]
+    local needed_here = targets[1][3]
+    for _, foundAt in ipairs(found.foundAtList) do
+      local size = foundAt[3]
+      while size > 0 do
+        if needed_here == 0 then
+          i = i + 1
+          needed_here = targets[i][3]
+        end
+        local balanced_size = math.min(size, needed_here)
+        completions[#completions + 1] =
+          InventoryHigh.move(foundAt[1], foundAt[2], targets[i][1], targets[i][2], balanced_size, item)
+        size = size - balanced_size
+        needed_here = needed_here - balanced_size
+      end
+    end
+    return Future.combineAll(completions)
+  else
+    return nil
+  end
+end
+
+---comment
+---@param from_iid IID
+---@param from_slot integer|nil
+---@return Future<Item>
+function InventoryHigh.import(from_iid, from_slot)
+  ---todo
 end
 
 -- when a filter is added to, it should compare the old filtered, because adding to a filter can only remove items

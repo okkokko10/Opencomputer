@@ -206,3 +206,4 @@ Items(iid, slot, uItem, size, added, removed)
 
 Planned(uItem, producing, reserved)
 
+todo: find items with any nbt
