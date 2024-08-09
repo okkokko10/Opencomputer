@@ -152,11 +152,9 @@ end
 --- todo: does not check max size, does not check inventory space
 ---@param id IID
 ---@param item Item
----@param slot number|nil -- by default takes from item
----@param size number|nil -- by default takes from item
-function Inventory.changeSingle(id, item, slot, size)
-  slot = slot or Item.getslot(item)
-  size = size or Item.getsize(item)
+---@param slot number
+---@param size number
+function Inventory.changeSingle(id, slot, item, size)
   local storage, close = Inventory.read(id)
   local current = storage[slot]
   if current then

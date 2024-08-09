@@ -8,6 +8,10 @@ local Lock = {}
 Lock.add_max = {}
 Lock.remove_max = {}
 
+function Lock:getCurrent(id, slot)
+    return Inventory.getInSlot(id, slot)
+end
+
 --- can this amount of item be added to this slot?
 ---@param id IID
 ---@param slot number
@@ -15,7 +19,7 @@ Lock.remove_max = {}
 ---@param item Item
 ---@return boolean|integer if true, how much at most
 function Lock:canAdd(id, slot, size, item)
-    local current_item = Inventory.getInSlot(id, slot)
+    local current_item = self:getCurrent(id, slot)
     if current_item and not Item.equals(item, current_item) then
         return false
     end
@@ -69,7 +73,7 @@ end
 ---@param item Item
 ---@return boolean|integer if true, how much at most
 function Lock:canRemove(id, slot, size, item)
-    local current_item = Inventory.getInSlot(id, slot)
+    local current_item = self:getCurrent(id, slot)
     if not Item.equals(item, current_item) then
         return false
     end
@@ -95,7 +99,7 @@ end
 ---@param current_item Item? -- precalculate Inventory.getInSlot(iid, slot)
 ---@return integer
 function Lock:sizeRemovable(iid, slot, current_item)
-    current_item = current_item or Inventory.getInSlot(iid, slot)
+    current_item = current_item or self:getCurrent(iid, slot)
 
     if not current_item then
         error("no item compared")
@@ -118,7 +122,7 @@ end
 ---@param current_item Item? -- precalculate Inventory.getInSlot(iid, slot)
 ---@return integer
 function Lock:sizeAddable(iid, slot, current_item)
-    current_item = current_item or Inventory.getInSlot(iid, slot) -- todo: current_item can be nil
+    current_item = current_item or self:getCurrent(iid, slot) -- todo: current_item can be nil
 
     if not current_item then
         error("no item compared")
@@ -173,7 +177,7 @@ function Lock:commitAdd(id, slot, size)
     else
         Item.setsize(current_added, new_size)
     end
-    Inventory.changeSingle(id, current_added, slot, size)
+    Inventory.changeSingle(id, slot, current_added, size)
 end
 
 --- commits an amount of removing from a slot, making it final
@@ -191,7 +195,7 @@ function Lock:commitRemove(id, slot, size)
     else
         Item.setsize(current_removed, new_size)
     end
-    Inventory.changeSingle(id, current_removed, slot, -size)
+    Inventory.changeSingle(id, slot, current_removed, -size)
 end
 
 return Lock

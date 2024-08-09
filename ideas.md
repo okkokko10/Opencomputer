@@ -199,3 +199,10 @@ drone pool: add capability to shut down drones. drones: add capability to descen
 todo: change .csv to .txt
 
 todo: instead of immediately ordering items to be moved, add an order.
+
+
+
+Items(iid, slot, uItem, size, added, removed)
+
+Planned(uItem, producing, reserved)
+
