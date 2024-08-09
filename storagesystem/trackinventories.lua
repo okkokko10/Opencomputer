@@ -212,7 +212,7 @@ function Inventory.makeNew(id, nodeparent, x, y, z, side, isExternal, sizeMultip
   return id
 end
 
---- a part of Inventory that ensures Consistency (only modify data in allowed ways) and Isolation (transactions should either block or act sequential) from ACID
+Inventory.Lock = require("Lock")
 
 --- sets the inventory according to scan data
 -- todo: this currently changes data asynchronously.
