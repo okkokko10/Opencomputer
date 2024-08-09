@@ -19,22 +19,15 @@ function Lock:canAdd(id, slot, size, item)
     if current_item and not Item.equals(item, current_item) then
         return false
     end
-    local current_size = current_item and Item.getsize(current_item) or 0
 
     ---@type table Item
-    local current_added = Lock.add_max[Helper.makeIndex(id, slot)]
+    local current_added = self.add_max[Helper.makeIndex(id, slot)]
     if current_added and not Item.equals(item, current_added) then
         return false
     end
-    local current_added_size
-    if current_added then
-        current_added_size = Item.getsize(current_added)
-    else
-        current_added_size = 0
-    end
 
-    local sizeMult = Inventory.getSizeMultiplier(id)
-    local maxAddable = Item.getmaxSize(item) * sizeMult - current_size - current_added_size
+    local maxAddable = self:sizeAddable(id, slot, current_item or Item.copy(item, 0, 0))
+
     if size <= maxAddable and maxAddable > 0 then
         -- the Item fits
         return maxAddable
@@ -46,23 +39,26 @@ end
 
 --- starts adding an item to the slot.
 --- add to add_max, if it's valid.
+--- call the return value to commit
 ---@param id IID
 ---@param slot number
 ---@param size number
 ---@param added_item Item
 ---@param precalculated_canAdd boolean|nil
----@return boolean success
+---@return fun()? commit
 function Lock:startAdd(id, slot, size, added_item, precalculated_canAdd)
     if precalculated_canAdd or self:canAdd(id, slot, size, added_item) then
-        local current_added = Lock.add_max[Helper.makeIndex(id, slot)]
+        local current_added = self.add_max[Helper.makeIndex(id, slot)]
         if current_added then
-            Item.setsize(current_added, Item.getsize(current_added) + size)
+            Item.addsize(current_added, size)
         else
-            Lock.add_max[Helper.makeIndex(id, slot)] = Item.copy(added_item, slot, size)
+            self.add_max[Helper.makeIndex(id, slot)] = Item.copy(added_item, slot, size)
         end
-        return true
+        return function()
+            return self:commitAdd(id, slot, size)
+        end
     else
-        return false
+        return nil
     end
 end
 
@@ -77,20 +73,12 @@ function Lock:canRemove(id, slot, size, item)
     if not Item.equals(item, current_item) then
         return false
     end
-    local current_removed = Lock.remove_max[Helper.makeIndex(id, slot)]
+    local current_removed = self.remove_max[Helper.makeIndex(id, slot)]
     if current_removed and not Item.equals(item, current_removed) then
         return false
     end
-    local current_removed_size
-    if current_removed then
-        current_removed_size = Item.getsize(current_removed)
-    else
-        current_removed_size = 0
-    end
 
-    local current_size = Item.getsize(current_item)
-
-    local maxRemovable = current_size - current_removed_size
+    local maxRemovable = self:sizeRemovable(id, slot, current_item)
 
     if size <= maxRemovable and maxRemovable > 0 then
         -- the Item fits
@@ -113,7 +101,7 @@ function Lock:sizeRemovable(iid, slot, current_item)
         error("no item compared")
     end
 
-    local current_removed = Lock.remove_max[Helper.makeIndex(iid, slot)]
+    local current_removed = self.remove_max[Helper.makeIndex(iid, slot)]
 
     local current_removed_size = current_removed and Item.getsize(current_removed) or 0
 
@@ -139,7 +127,7 @@ function Lock:sizeAddable(iid, slot, current_item)
     local current_size = current_item and Item.getsize(current_item) or 0
 
     ---@type Item
-    local current_added = Lock.add_max[Helper.makeIndex(iid, slot)]
+    local current_added = self.add_max[Helper.makeIndex(iid, slot)]
 
     local current_added_size = current_added and Item.getsize(current_added) or 0
 
@@ -153,18 +141,20 @@ end
 ---@param slot integer
 ---@param size integer
 ---@param removed_item Item
----@return boolean success
+---@return fun()? commit
 function Lock:startRemove(id, slot, size, removed_item, precalculated_canRemove)
     if precalculated_canRemove or self:canRemove(id, slot, size, removed_item) then
-        local current_removed = Lock.remove_max[Helper.makeIndex(id, slot)]
+        local current_removed = self.remove_max[Helper.makeIndex(id, slot)]
         if current_removed then
             Item.setsize(current_removed, Item.getsize(current_removed) + size)
         else
-            Lock.remove_max[Helper.makeIndex(id, slot)] = Item.copy(removed_item, slot, size)
+            self.remove_max[Helper.makeIndex(id, slot)] = Item.copy(removed_item, slot, size)
         end
-        return true
+        return function()
+            return self:commitRemove(id, slot, size)
+        end
     else
-        return false
+        return nil
     end
 end
 
@@ -173,13 +163,13 @@ end
 ---@param slot integer
 ---@param size integer
 function Lock:commitAdd(id, slot, size)
-    local current_added = Lock.add_max[Helper.makeIndex(id, slot)]
+    local current_added = self.add_max[Helper.makeIndex(id, slot)]
     local new_size = Item.getsize(current_added) - size
     if new_size < 0 then
         error("committing more than possible: Lock.commitAdd(" .. id .. ", " .. slot .. ", " .. size .. ")")
     end
     if new_size == 0 then
-        Lock.add_max[Helper.makeIndex(id, slot)] = nil
+        self.add_max[Helper.makeIndex(id, slot)] = nil
     else
         Item.setsize(current_added, new_size)
     end
@@ -191,13 +181,13 @@ end
 ---@param slot integer
 ---@param size integer
 function Lock:commitRemove(id, slot, size)
-    local current_removed = Lock.remove_max[Helper.makeIndex(id, slot)]
+    local current_removed = self.remove_max[Helper.makeIndex(id, slot)]
     local new_size = Item.getsize(current_removed) - size
     if new_size < 0 then
         error("committing more than possible: Lock.commitRemove(" .. id .. ", " .. slot .. ", " .. size .. ")")
     end
     if new_size == 0 then
-        Lock.remove_max[Helper.makeIndex(id, slot)] = nil
+        self.remove_max[Helper.makeIndex(id, slot)] = nil
     else
         Item.setsize(current_removed, new_size)
     end
@@ -215,5 +205,6 @@ Lock.canAdd, Lock.sizeAddable
 Lock.canRemove, Lock.sizeRemovable
 
 
+commitAdd and commitRemove are now returned bu startAdd and startRemove
 
 ]]

@@ -194,3 +194,8 @@ graphics color palette
 graphics color string
 
 drone pool: add capability to shut down drones. drones: add capability to descend onto the ground when shutting down
+
+
+todo: change .csv to .txt
+
+todo: instead of immediately ordering items to be moved, add an order.

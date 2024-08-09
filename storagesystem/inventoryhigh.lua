@@ -109,8 +109,8 @@ function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item)
   elseif not ti.Lock:canAdd(to_iid, to_slot, size, item) then
     return Future.createInstant(false, "can't add")
   end
-  ti.Lock:startRemove(from_iid, from_slot, size, item)
-  ti.Lock:startAdd(to_iid, to_slot, size, item)
+  local commitRemove = ti.Lock:startRemove(from_iid, from_slot, size, item) or error("this remove should go through")
+  local commitAdd = ti.Lock:startAdd(to_iid, to_slot, size, item) or error("this add should go through")
   local work =
     DroneInstruction.join2(
     DroneInstruction.suck(from_iid, from_slot, 1, size),
@@ -119,8 +119,8 @@ function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item)
   local finish =
     work:onSuccess(
     function()
-      ti.Lock:commitRemove(from_iid, from_slot, size)
-      ti.Lock:commitAdd(to_iid, to_slot, size)
+      commitRemove()
+      commitAdd()
       -- todo: if a failure is detected, undo the action instead.
       -- todo: program drones to do the completed instructions in reverse when they encounter an exception, then they echo failure.
       return true
