@@ -109,8 +109,8 @@ function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item)
   elseif not ti.Lock.canAdd(to_iid, to_slot, size, item) then
     return Future.createInstant(false, "can't add")
   end
-  ti.Lock.startRemove(from_iid, item, from_slot, size)
-  ti.Lock.startAdd(to_iid, item, to_slot, size)
+  ti.Lock.startRemove(from_iid, from_slot, size, item)
+  ti.Lock.startAdd(to_iid, to_slot, size, item)
   local work =
     DroneInstruction.join2(
     DroneInstruction.suck(from_iid, from_slot, 1, size),
