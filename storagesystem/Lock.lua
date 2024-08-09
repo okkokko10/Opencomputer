@@ -14,7 +14,7 @@ Lock.remove_max = {}
 ---@param size number
 ---@param item Item
 ---@return boolean|integer if true, how much at most
-function Lock.canAdd(id, slot, size, item)
+function Lock:canAdd(id, slot, size, item)
     local current_item = Inventory.getInSlot(id, slot)
     if current_item and not Item.equals(item, current_item) then
         return false
@@ -52,8 +52,8 @@ end
 ---@param added_item Item
 ---@param precalculated_canAdd boolean|nil
 ---@return boolean success
-function Lock.startAdd(id, slot, size, added_item, precalculated_canAdd)
-    if precalculated_canAdd or Lock.canAdd(id, slot, size, added_item) then
+function Lock:startAdd(id, slot, size, added_item, precalculated_canAdd)
+    if precalculated_canAdd or self:canAdd(id, slot, size, added_item) then
         local current_added = Lock.add_max[Helper.makeIndex(id, slot)]
         if current_added then
             Item.setsize(current_added, Item.getsize(current_added) + size)
@@ -72,7 +72,7 @@ end
 ---@param size integer
 ---@param item Item
 ---@return boolean|integer if true, how much at most
-function Lock.canRemove(id, slot, size, item)
+function Lock:canRemove(id, slot, size, item)
     local current_item = Inventory.getInSlot(id, slot)
     if not Item.equals(item, current_item) then
         return false
@@ -106,7 +106,7 @@ end
 ---@param slot integer
 ---@param current_item Item? -- precalculate Inventory.getInSlot(iid, slot)
 ---@return integer
-function Lock.sizeRemovable(iid, slot, current_item)
+function Lock:sizeRemovable(iid, slot, current_item)
     current_item = current_item or Inventory.getInSlot(iid, slot)
 
     if not current_item then
@@ -129,7 +129,7 @@ end
 ---@param slot integer
 ---@param current_item Item? -- precalculate Inventory.getInSlot(iid, slot)
 ---@return integer
-function Lock.sizeAddable(iid, slot, current_item)
+function Lock:sizeAddable(iid, slot, current_item)
     current_item = current_item or Inventory.getInSlot(iid, slot) -- todo: current_item can be nil
 
     if not current_item then
@@ -154,8 +154,8 @@ end
 ---@param size integer
 ---@param removed_item Item
 ---@return boolean success
-function Lock.startRemove(id, slot, size, removed_item, precalculated_canRemove)
-    if precalculated_canRemove or Lock.canRemove(id, slot, size, removed_item) then
+function Lock:startRemove(id, slot, size, removed_item, precalculated_canRemove)
+    if precalculated_canRemove or self:canRemove(id, slot, size, removed_item) then
         local current_removed = Lock.remove_max[Helper.makeIndex(id, slot)]
         if current_removed then
             Item.setsize(current_removed, Item.getsize(current_removed) + size)
@@ -172,7 +172,7 @@ end
 ---@param id IID
 ---@param slot integer
 ---@param size integer
-function Lock.commitAdd(id, slot, size)
+function Lock:commitAdd(id, slot, size)
     local current_added = Lock.add_max[Helper.makeIndex(id, slot)]
     local new_size = Item.getsize(current_added) - size
     if new_size < 0 then
@@ -190,7 +190,7 @@ end
 ---@param id IID
 ---@param slot integer
 ---@param size integer
-function Lock.commitRemove(id, slot, size)
+function Lock:commitRemove(id, slot, size)
     local current_removed = Lock.remove_max[Helper.makeIndex(id, slot)]
     local new_size = Item.getsize(current_removed) - size
     if new_size < 0 then

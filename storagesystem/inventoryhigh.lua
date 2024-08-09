@@ -37,8 +37,8 @@ function InventoryHigh.allItems()
 
         -- local size = Item.getsize(item)
 
-        local size = ti.Lock.sizeRemovable(iid, slot, item)
-        local addable = ti.Lock.sizeAddable(iid, slot, item)
+        local size = ti.Lock:sizeRemovable(iid, slot, item)
+        local addable = ti.Lock:sizeAddable(iid, slot, item)
 
         local position_info = {iid, slot, size, addable}
 
@@ -104,13 +104,13 @@ function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item)
   if not size or size <= 0 then
     return Future.createInstant(false, "0 items requested")
   end
-  if not ti.Lock.canRemove(from_iid, from_slot, size, item) then
+  if not ti.Lock:canRemove(from_iid, from_slot, size, item) then
     return Future.createInstant(false, "can't remove")
-  elseif not ti.Lock.canAdd(to_iid, to_slot, size, item) then
+  elseif not ti.Lock:canAdd(to_iid, to_slot, size, item) then
     return Future.createInstant(false, "can't add")
   end
-  ti.Lock.startRemove(from_iid, from_slot, size, item)
-  ti.Lock.startAdd(to_iid, to_slot, size, item)
+  ti.Lock:startRemove(from_iid, from_slot, size, item)
+  ti.Lock:startAdd(to_iid, to_slot, size, item)
   local work =
     DroneInstruction.join2(
     DroneInstruction.suck(from_iid, from_slot, 1, size),
@@ -119,8 +119,8 @@ function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item)
   local finish =
     work:onSuccess(
     function()
-      ti.Lock.commitRemove(from_iid, from_slot, size)
-      ti.Lock.commitAdd(to_iid, to_slot, size)
+      ti.Lock:commitRemove(from_iid, from_slot, size)
+      ti.Lock:commitAdd(to_iid, to_slot, size)
       -- todo: if a failure is detected, undo the action instead.
       -- todo: program drones to do the completed instructions in reverse when they encounter an exception, then they echo failure.
       return true
