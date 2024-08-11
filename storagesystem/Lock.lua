@@ -1,15 +1,40 @@
-local Inventory = require("trackinventories")
-
 local Helper = require "Helper"
 local Item = require "Item"
 
 --- a part of Inventory that ensures Consistency (only modify data in allowed ways) and Isolation (transactions should either block or act sequential) from ACID
+---@class Lock
+---@field add_max table<string,Item> -- string is {iid,slot}
+---@field remove_max table<string,Item> -- string is {iid,slot}
+---@field Inventory table
 local Lock = {}
-Lock.add_max = {}
-Lock.remove_max = {}
 
-function Lock:getCurrent(id, slot)
-    return Inventory.getInSlot(id, slot)
+function Lock:create(Inventory)
+    Lock.__index = Lock
+    return setmetatable({Inventory = Inventory, add_max = {}, remove_max = {}}, Lock)
+end
+
+---
+---@param iid IID
+---@param slot integer
+---@return Item
+function Lock:getCurrent(iid, slot)
+    return self.Inventory.getInSlot(iid, slot)
+end
+
+---
+---@param iid IID
+---@param slot integer
+---@param item Item
+---@param size integer
+function Lock:changeSingle(iid, slot, item, size)
+    self.Inventory.changeSingle(iid, slot, item, size)
+end
+
+---
+---@param iid IID
+---@return number
+function Lock:getSizeMultiplier(iid)
+    return self.Inventory.getSizeMultiplier(iid)
 end
 
 --- can this amount of item be added to this slot?
@@ -24,7 +49,7 @@ function Lock:canAdd(id, slot, size, item)
         return false
     end
 
-    ---@type table Item
+    ---@type Item
     local current_added = self.add_max[Helper.makeIndex(id, slot)]
     if current_added and not Item.equals(item, current_added) then
         return false
@@ -135,8 +160,7 @@ function Lock:sizeAddable(iid, slot, current_item)
 
     local current_added_size = current_added and Item.getsize(current_added) or 0
 
-    local sizeMult = Inventory.getSizeMultiplier(iid)
-    local maxAddable = Item.getmaxSize(current_item) * sizeMult - current_size - current_added_size
+    local maxAddable = Item.getmaxSize(current_item) * self:getSizeMultiplier(iid) - current_size - current_added_size
     return maxAddable
 end
 
@@ -177,7 +201,7 @@ function Lock:commitAdd(id, slot, size)
     else
         Item.setsize(current_added, new_size)
     end
-    Inventory.changeSingle(id, slot, current_added, size)
+    self:changeSingle(id, slot, current_added, size)
 end
 
 --- commits an amount of removing from a slot, making it final
@@ -195,7 +219,7 @@ function Lock:commitRemove(id, slot, size)
     else
         Item.setsize(current_removed, new_size)
     end
-    Inventory.changeSingle(id, slot, current_removed, -size)
+    self:changeSingle(id, slot, current_removed, -size)
 end
 
 return Lock
