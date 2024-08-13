@@ -6,10 +6,22 @@ local longmsg = {}
 
 local event = require "event"
 local component = require "component"
-local filehelp = require("filehelp")
 local serialization = require "serialization"
 
-local config = filehelp.loadtable("/usr/cfgs/longmsg_message.cfg", true)
+local config
+if
+  not pcall(
+    function()
+      config = require("filehelp").loadtable("/usr/cfgs/longmsg_message.cfg", true)
+    end
+  )
+ then
+  config = {
+    position = {x = 0, y = 0, z = 0},
+    default_port = 2400,
+    default_address = nil
+  }
+end
 
 ---@alias Address string
 

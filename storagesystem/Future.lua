@@ -1,5 +1,6 @@
 local thread = require "thread"
 local os = require "os"
+local Helper = require "Helper"
 
 ---@diagnostic disable thread
 ---@diagnostic disable os

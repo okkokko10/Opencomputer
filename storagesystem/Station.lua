@@ -28,6 +28,8 @@ Station.classes = {}
 Station.classes.craftingRobot = {
     class = "crafting"
 }
+Station.classes.craftingRobot.__index = Station.classes.craftingRobot
+
 ---gets InventorySlots to put items in.
 ---@param self CraftingRobot
 ---@return InventorySlot[]
@@ -127,7 +129,7 @@ end
 Station.STATIONS_PATH = "/usr/storage/stations.txt"
 
 for index, value in ipairs(filehelp.loadCSV(Station.STATIONS_PATH)) do
-    Station.register(value)
+    Station.register(setmetatable(value, Station.classes[value.metatable]))
 end
 
 function Station.save()
