@@ -63,11 +63,13 @@ end
 
 --- scan the inventory
 ---@param iid IID
+---@param from integer?
+---@param to integer?
 ---@return DroneInstruction
-function DroneInstruction.scan(iid)
+function DroneInstruction.scan(iid, from, to)
   local inv_data = ti.getData(iid)
   local loc = Location.copy(inv_data)
-  return DroneInstruction.make(loc, loc, {api.actions.scan(iid, inv_data.side)})
+  return DroneInstruction.make(loc, loc, {api.actions.scan(iid, inv_data.side, from, to)})
 end
 --- take items from an inventory
 ---@param iid IID
@@ -169,6 +171,7 @@ end
 --- sets the drone to do the instruction. blocks, so call it in a thread.
 ---@param self DroneInstruction
 ---@param drone_address string
+---@return LongMessage[]
 function DroneInstruction:execute(drone_address)
   -- if not Drones.isFree(drone_address) then
   --   error("this drone is not free")
@@ -192,20 +195,29 @@ function DroneInstruction:execute(drone_address)
 
   ---- drone has confirmed instruction
 
-  Drones.pullEcho(drone_address, finish_message) -- wait until finish_message is received
+  ---@type LongMessage[]
+  local messages = {}
+
+  repeat
+    local message = longmsg.pullTable({remoteAddress = drone_address})
+    messages[#messages + 1] = message
+  until message.name == "echo" and message.message == finish_message
+
+  -- wait until finish_message is received
 
   ---- drone has finished instruction
 
   -- Drones.setFree(drone_address)
 
-  return true
+  return messages
 end
 
 ---
 ---@param self DroneInstruction
+---@return Future --<LongMessage[]>
 function DroneInstruction:queueExecute()
   local f = function(address)
-    self:execute(address)
+    return self:execute(address)
   end
   return Drones.queue(f, self.start_location)
 end

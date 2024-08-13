@@ -11,7 +11,7 @@ local longmsg = require "longmsg_message"
 
 local Inventory = {}
 
----@alias Contents Item[]
+---@alias Contents table<integer,Item>
 ---@alias IID number|string
 ---@alias Side integer
 
@@ -218,27 +218,6 @@ Inventory.Lock = require("Lock"):create(Inventory)
 -- scan_data = {id=?,time_start=?,time_end=?,space=?,from=?,to=?,storage={[?]={...Item...}}}
 local function updateFromScan(scan_data)
   Inventory.write(scan_data.id, Helper.mapWithKeys(scan_data.storage, Item.parseScanned), scan_data.space)
-end
-
--- todo: handle updating from scan in a Future.onSuccess?
-
--- automatically update inventories when scan data arrives
-local function scan_data_listener(e, localAddress, remoteAddress, port, distance, name, message)
-  if name ~= "scan_data" then
-    return
-  end
-  local scan_data = serialization.unserialize(message)
-  updateFromScan(scan_data)
-end
-
-local function startListening()
-  return longmsg.listen(scan_data_listener)
-end
-local cancelvalue = startListening()
-
-local function quit()
-  event.cancel(cancelvalue)
-  Inventory.saveInventories()
 end
 
 return Inventory

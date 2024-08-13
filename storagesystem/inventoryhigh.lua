@@ -5,12 +5,14 @@ local Drones = require "fetch_high"
 local Item = require "Item"
 local DroneInstruction = require "DroneInstruction"
 local Future = require "Future"
+local serialization = require("serialization")
 
 local InventoryHigh = {}
 
 ---@class ItemFoundAt: Item
 ---@field foundAtList FoundAt[]
 
+--- iid, slot, removable, addable
 ---@class FoundAt
 ---@field [1] IID -- iid
 ---@field [2] integer -- slot
@@ -81,13 +83,53 @@ function InventoryHigh.scanAllOne()
   end
 end
 
+---@class ScanData
+---@field id IID
+---@field time_start number
+---@field time_end number
+---@field space integer
+---@field from integer
+---@field to integer
+---@field storage table[]
+---@field contents Contents
+
+--- gets ScanData from the return of DroneInstruction.scan(...):execute()
+---@param messages LongMessage[]
+---@return ScanData
+function InventoryHigh.getScan(messages)
+  for index, value in ipairs(messages) do
+    if value.name == "scan_data" then
+      local scan_data = serialization.unserialize(value.message)
+      scan_data.contents = Helper.mapWithKeys(scan_data.storage, Item.parseScanned)
+      return scan_data
+    end
+  end
+  error("did not receive scan data")
+end
+
+---comment
+---@param iid IID
+---@return Future
+function InventoryHigh.scanSingle(iid)
+  return DroneInstruction.scan(iid):queueExecute():onSuccess(
+    function(messages)
+      local scan_data = InventoryHigh.getScan(messages)
+      ti.write(scan_data.id, scan_data.contents, scan_data.space) -- todo: this in another position
+      return scan_data
+    end
+  )
+end
+
 function InventoryHigh.scanAll()
   -- local instr = Helper.map(ti.inventories, function(inv_data)
   --   return DroneInstruction.scan(inv_data.id)
   -- end)
+  local futures = {}
   for k, inv_data in pairs(ti.inventories) do
-    DroneInstruction.scan(inv_data.id):queueExecute() -- todo: make a combined future.
+    local future = InventoryHigh.scanSingle(inv_data.id)
+    futures[#futures + 1] = future
   end
+  return Future.combineAll(futures)
 end
 
 --- takes an item from one inventory slot to another
@@ -136,17 +178,20 @@ end
 ---@param foundAt FoundAt
 ---@param maxSize integer
 ---@param atMost? integer -- take at most this much if it's less than the actual amount
+---@param value_index? 3|4 -- split removable (3) or addable (4)?
 ---@return FoundAt[] -- same location as the input, but split
 ---@return integer left -- how much is left of atMost
-local function splitFoundAt(foundAt, maxSize, atMost)
+local function splitFoundAt(foundAt, maxSize, atMost, value_index)
   atMost = atMost or math.huge
-  local fullAddSize = math.min(foundAt[3], atMost)
+  value_index = value_index or 3
+  local fullAddSize = math.min(foundAt[value_index], atMost)
   return Helper.map(
     Helper.splitNumber(fullAddSize, maxSize),
     function(addSize, _)
       local added = Helper.shallowCopy(foundAt)
-      added[3] = addSize
+      added[3] = 0
       added[4] = 0 -- todo: this sets addable size to 0, just to make sure.
+      added[value_index] = addSize
       return added
     end
   ), atMost - fullAddSize
@@ -179,18 +224,19 @@ end
 ---@param item Item|ItemFoundAt
 ---@param size integer
 ---@param filterPosition? fun(foundAt:FoundAt):boolean -- return false to not take from this
+---@param foundAt_value_index? 3|4 -- search for removable (3) or addable (4)
 ---@return ItemFoundAt
----@return boolean foundEnough
-function InventoryHigh.find(item, size, filterPosition)
+---@return false|integer notFoundEnough
+function InventoryHigh.find(item, size, filterPosition, foundAt_value_index)
+  foundAt_value_index = foundAt_value_index or 3
   ---@type FoundAt[]
   local copy_foundAtList = Helper.shallowCopy(InventoryHigh.getItemFoundAt(item).foundAtList)
   table.sort(
     copy_foundAtList,
     function(a, b)
-      return a[3] < b[3]
+      return a[foundAt_value_index] < b[foundAt_value_index]
     end
   )
-  local totalSize = 0 -- todo factor this out
   local needed = size
   ---@type FoundAt[]
   local out = {}
@@ -199,24 +245,75 @@ function InventoryHigh.find(item, size, filterPosition)
   for _, list_element in ipairs(copy_foundAtList) do
     if not filterPosition or filterPosition(list_element) then
       --- if addSize is higher than the item's natural stack size, split it
-      local split, new_needed = splitFoundAt(list_element, maxSize, needed)
+      local split, new_needed = splitFoundAt(list_element, maxSize, needed, foundAt_value_index)
       needed = new_needed
       for _, added in ipairs(split) do
         out[#out + 1] = added
-        totalSize = totalSize + added[3]
       end
-      assert(totalSize == size - needed)
       if needed == 0 then
         break
       end
     end
   end
-  assert(totalSize == size - needed)
 
   local ite = Item.copy(item, nil, size - needed)
   ---@cast ite ItemFoundAt
   ite.foundAtList = out
-  return ite, (needed == 0)
+  return ite, (needed ~= 0) and needed
+end
+
+---finds places to deposit items, as an ItemFoundAt with addables.
+---
+---@param item Item|ItemFoundAt
+---@param size integer
+---@param filterPosition? fun(foundAt:FoundAt):boolean
+---@return ItemFoundAt
+---@return false|integer notFoundEnough
+function InventoryHigh.findDeposit(item, size, filterPosition)
+  local find, notFoundEnough = InventoryHigh.find(item, size, filterPosition, 4)
+  if notFoundEnough then
+    -- todo: find empty slots
+    local empty, notFoundEnough2 = InventoryHigh.findEmpty(notFoundEnough)
+    table.move(empty, 0, #empty, #find.foundAtList + 1, find.foundAtList)
+    return find, notFoundEnough2
+  end
+  return find, false
+end
+
+---FoundAt[] addable slots, split to maxSize
+---@param needed integer
+---@return FoundAt[]
+---@return false|integer notFoundEnough
+function InventoryHigh.findEmpty(needed, maxSize)
+  ---@type FoundAt[]
+  local out = {}
+
+  for iid, inventoryData in pairs(ti.inventories) do
+    if not inventoryData.isExternal then
+      local items, close = ti.read(iid)
+      for i = 1, inventoryData.space do
+        if not items[i] then
+          for _ = 1, inventoryData.sizeMultiplier do
+            if needed == 0 then
+              break
+            end
+            local balance = math.min(needed, maxSize)
+            out[#out + 1] = {iid, i, 0, balance}
+            needed = needed - balance
+          end
+          if needed == 0 then
+            break
+          end
+        end
+      end
+      close()
+
+      if needed == 0 then
+        break
+      end
+    end
+  end
+  return out, (needed ~= 0) and needed
 end
 
 ---gathers the item from around the system
@@ -246,46 +343,79 @@ end
 --- returns a future that succeeds when all of the item is gathered
 --- puts the item in each of the slots
 ---@param item Item|ItemFoundAt
----@param targets FoundAt[]
+---@param targets FoundAt[] -- amount is addable, [4]
 ---@return Future<nil>?
 function InventoryHigh.gatherSpread(item, targets)
   local itemsNeeded = 0
   for index, foundAt in ipairs(targets) do
-    itemsNeeded = itemsNeeded + foundAt[3]
+    itemsNeeded = itemsNeeded + foundAt[4]
   end
 
   local found = InventoryHigh.find(item, itemsNeeded)
-  if found then
-    local completions = {}
-    local i = 1
-    --- size still needed at targets[i]
-    local needed_here = targets[1][3]
-    for _, foundAt in ipairs(found.foundAtList) do
-      local size = foundAt[3]
-      while size > 0 do
-        if needed_here == 0 then
-          i = i + 1
-          needed_here = targets[i][3]
-        end
-        local balanced_size = math.min(size, needed_here)
-        completions[#completions + 1] =
-          InventoryHigh.move(foundAt[1], foundAt[2], targets[i][1], targets[i][2], balanced_size, item)
-        size = size - balanced_size
-        needed_here = needed_here - balanced_size
-      end
-    end
-    return Future.combineAll(completions)
-  else
+  if not found then
     return nil
   end
+  return InventoryHigh.moveMany(item, found, targets)
 end
 
----comment
+--- moves items from "from" to "to"
+--- at the end, items are removed from the places listed by "from" removable, and added to "to" addable
+---@param item Item
+---@param from FoundAt[]
+---@param to FoundAt[]
+---@return Future<[FoundAt[],FoundAt[]]>
+function InventoryHigh.moveMany(item, from, to)
+  local completions = {}
+  local i = 1
+  --- size still needed at to[i]
+  local needed_here = to[1][4]
+  for _, foundAt in ipairs(from) do
+    local size = foundAt[3]
+    while size > 0 do
+      if needed_here == 0 then
+        i = i + 1
+        needed_here = to[i][4]
+      end
+      local balanced_size = math.min(size, needed_here)
+      completions[#completions + 1] =
+        InventoryHigh.move(foundAt[1], foundAt[2], to[i][1], to[i][2], balanced_size, item)
+      size = size - balanced_size
+      needed_here = needed_here - balanced_size
+    end
+  end
+  return Future.combineAll(completions, nil, {from, to})
+end
+
+---move an item stack from this slot to an appropriate place
+---@param iid IID
+---@param slot integer
+---@param item Item
+---@param size integer
+---@return Future<[FoundAt[], FoundAt[]]>
+function InventoryHigh.import(iid, slot, item, size)
+  local itemFoundAt = InventoryHigh.getItemFoundAt(item)
+  local deposit = InventoryHigh.findDeposit(itemFoundAt, size)
+  return InventoryHigh.moveMany(item, {{iid, slot, size, 0}}, deposit)
+end
+
+---scans an inventory and moves things to the storage from there.
+---returns Future: what items were found
 ---@param from_iid IID
----@param from_slot integer|nil
----@return Future<Item>
-function InventoryHigh.import(from_iid, from_slot)
-  ---todo
+---@param from_slot integer|nil -- if nil, import all
+---@param to_slot integer|nil -- if nil, equal to from_slot
+---@return Future<Contents>
+function InventoryHigh.importUnknown(from_iid, from_slot, to_slot)
+  return DroneInstruction.scan(from_iid, from_slot, to_slot or from_slot):queueExecute():onSuccess(
+    function(messages)
+      local scan_data = InventoryHigh.getScan(messages)
+      local futures = {}
+      for index, itemstack in pairs(scan_data.contents) do
+        futures[#futures + 1] = InventoryHigh.import(from_iid, index, itemstack, Item.getsize(itemstack))
+      end
+      Future.joinAll(futures)
+      return scan_data.contents
+    end
+  )
 end
 
 -- when a filter is added to, it should compare the old filtered, because adding to a filter can only remove items

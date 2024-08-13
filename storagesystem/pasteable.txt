@@ -47,3 +47,8 @@ component.gpu.setActiveBuffer(1)
 -- component.gpu.setActiveBuffer(0); timer(); for i = 1, 10000 do component.gpu.setBackground(1) end;component.gpu.setActiveBuffer(0); print(timer())
 
 -- for i = 1,100,4 do print(i,string.char(i,i+1,i+2,i+3)) end
+
+
+iron = Helper.find(inventoryhigh.allItems(),function(v,k) return Item.getname(v) == "minecraft:iron_block" end)
+iron1 = Item.copy(iron,0,1)
+reci = {needed = {iron1},stationType="crafting",using={{{2,1}}}}

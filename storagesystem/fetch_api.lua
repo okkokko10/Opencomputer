@@ -40,8 +40,8 @@ function actions.scan(id, side, from, to) -- id: any side: number[, from: number
     type = "scan",
     id = id,
     side = side,
-    from = nil,
-    to = nil
+    from = from,
+    to = to
   }
 end
 

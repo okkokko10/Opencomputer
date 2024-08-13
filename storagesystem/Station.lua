@@ -66,7 +66,7 @@ function Station.prepareRecipe(stationInstance, recipe, times)
             function(value, key)
                 local invSlot = inputSlots[value[1]]
                 local size = value[2] * times
-                return {invSlot[1], invSlot[2], size}
+                return {invSlot[1], invSlot[2], 0, size}
             end
         )
         futures[#futures + 1] = InventoryHigh.gatherSpread(value, targetsAt)
@@ -86,7 +86,7 @@ function Station.emptyOutputs(stationInstance, recipe, times)
     local outputs = stationInstance:getOutputSlots()
     local futures = {}
     for index, value in ipairs(outputs) do
-        futures[#futures + 1] = InventoryHigh.import(value[1], value[2])
+        futures[#futures + 1] = InventoryHigh.importUnknown(value[1], value[2])
     end
     return Future.combineAll(futures)
 end

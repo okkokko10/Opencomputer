@@ -137,6 +137,7 @@ end
 --- if self fails, the resulting future automatically fails, which may be sent to further onFailure
 ---@generic T2 any
 ---@generic T any
+---@param self Future<T>
 ---@param func fun(...:T):T2? -- takes the result of self:
 ---@return Future<T2>
 function Future:onSuccess(func)
@@ -297,10 +298,12 @@ end
 
 ---combines futures into a single future that succeeds if all succeed, and fails if any fail or timeout.
 ---currently fails only once all have completed, not when any has failed
+---@generic R any
 ---@param futures Future[]
 ---@param timeout? number seconds
----@return Future ---<nil>
-function Future.combineAll(futures, timeout)
+---@param thenReturn? R
+---@return Future<R>
+function Future.combineAll(futures, timeout, thenReturn)
   return Future.onAllComplete(
     futures,
     function(resultses, success)
@@ -309,10 +312,12 @@ function Future.combineAll(futures, timeout)
       elseif success == nil then
         error("timeout")
       end
-      return nil
+      return thenReturn
     end,
     timeout
   )
 end
+
+-- todo: thenReturn: future:thenReturn(foo) returns a Future that completes when future does and which return is foo
 
 return Future
