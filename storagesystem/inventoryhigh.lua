@@ -4,7 +4,6 @@ local Nodes = require "navigation_nodes"
 local Drones = require "fetch_high"
 local Item = require "Item"
 local DroneInstruction = require "DroneInstruction"
-local Recipe = require "Recipe"
 local Future = require "Future"
 
 local InventoryHigh = {}

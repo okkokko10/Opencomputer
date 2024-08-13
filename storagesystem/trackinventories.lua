@@ -210,7 +210,7 @@ function Inventory.makeNew(id, nodeparent, x, y, z, side, isExternal, sizeMultip
   return id
 end
 
-Inventory.Lock = require("Lock")
+Inventory.Lock = require("Lock"):create(Inventory)
 
 --- sets the inventory according to scan data
 -- todo: this currently changes data asynchronously.
