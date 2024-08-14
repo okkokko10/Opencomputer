@@ -143,16 +143,16 @@ end
 function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item)
   item = item or ti.getInSlot(from_iid, from_slot)
   if not item then
-    return Future.createInstant(false, "no item requested")
+    return Future.createInstant(false, "no item requested"):named("ih:move")
   end
   size = size or Item.getsize(item)
   if not size or size <= 0 then
-    return Future.createInstant(false, "0 items requested")
+    return Future.createInstant(false, "0 items requested"):named("ih:move")
   end
   if not ti.Lock:canRemove(from_iid, from_slot, size, item) then
-    return Future.createInstant(false, "can't remove")
+    return Future.createInstant(false, "can't remove"):named("ih:move")
   elseif not ti.Lock:canAdd(to_iid, to_slot, size, item) then
-    return Future.createInstant(false, "can't add")
+    return Future.createInstant(false, "can't add"):named("ih:move")
   end
   local commitRemove = ti.Lock:startRemove(from_iid, from_slot, size, item) or error("this remove should go through")
   local commitAdd = ti.Lock:startAdd(to_iid, to_slot, size, item) or error("this add should go through")
@@ -171,7 +171,7 @@ function InventoryHigh.move(from_iid, from_slot, to_iid, to_slot, size, item)
       return true
     end
   )
-  return finish
+  return finish:named("ih:move")
 end
 
 --- if the size is higher than maxSize, split it.
@@ -364,7 +364,7 @@ end
 ---@param item Item
 ---@param from FoundAt[]
 ---@param to FoundAt[]
----@return Future<[FoundAt[],FoundAt[]]>
+---@return Future|Future<[FoundAt[],FoundAt[]]>
 function InventoryHigh.moveMany(item, from, to)
   local completions = {}
   local i = 1
@@ -375,31 +375,10 @@ function InventoryHigh.moveMany(item, from, to)
   local needed_here = to[1][4]
   for index, foundAt in ipairs(from) do
     local size = foundAt[3]
-    if not size then
-      error(
-        "size is nil: i=" ..
-          i ..
-            " size=" ..
-              size ..
-                " " ..
-                  serialization.serialize(
-                    {item, "from:", from, "to:", to, "foundAt:", foundAt, "index:", index},
-                    math.huge
-                  ),
-        2
-      )
-    end
     while size > 0 do
       if needed_here == 0 then
         i = i + 1
         needed_here = to[i][4]
-      end
-      if not needed_here then
-        error(
-          "addable nil: i=" ..
-            i .. " size=" .. size .. " " .. serialization.serialize({item, "from:", from, "to:", to}, math.huge),
-          2
-        )
       end
       local balanced_size = math.min(size, needed_here)
       completions[#completions + 1] =
@@ -408,7 +387,7 @@ function InventoryHigh.moveMany(item, from, to)
       needed_here = needed_here - balanced_size
     end
   end
-  return Future.combineAll(completions, nil, {from, to})
+  return Future.combineAll(completions, nil, {from, to}):named("ih:moveMany")
 end
 
 ---move an item stack from this slot to an appropriate place
@@ -416,11 +395,11 @@ end
 ---@param slot integer
 ---@param item Item
 ---@param size integer
----@return Future<[FoundAt[], FoundAt[]]>
+---@return Future|Future<[FoundAt[], FoundAt[]]>
 function InventoryHigh.import(iid, slot, item, size)
   local itemFoundAt = InventoryHigh.getItemFoundAt(item)
   local deposit = InventoryHigh.findDeposit(itemFoundAt, size)
-  return InventoryHigh.moveMany(item, {{iid, slot, size, 0}}, deposit.foundAtList)
+  return InventoryHigh.moveMany(item, {{iid, slot, size, 0}}, deposit.foundAtList):named("import")
 end
 
 ---scans an inventory and moves things to the storage from there.
@@ -428,7 +407,7 @@ end
 ---@param from_iid IID
 ---@param from_slot integer|nil -- if nil, import all
 ---@param to_slot integer|nil -- if nil, equal to from_slot
----@return Future<Contents>
+---@return Future|Future<Contents>
 function InventoryHigh.importUnknown(from_iid, from_slot, to_slot)
   return DroneInstruction.scan(from_iid, from_slot, to_slot or from_slot):queueExecute():onSuccess(
     function(messages)

@@ -14,21 +14,28 @@ local serialization = require "serialization"
 ---@field private t thread
 ---@field name? string
 ---@field parents? Future[]
+---@field joined Future[]
 local Future = {}
+
+--- ephemeron table of threads to futures
+--- @type table<thread,Future>
+Future.list = setmetatable({}, {__mode = "k"})
 
 Future.__index = Future
 
+--#region debugging
+
 function Future:__tostring()
   if self.success == nil then
-    return "Incomplete" .. self:formattedName() .. self:parentString()
+    return "Incomplete" .. self:formattedName() .. self:dependingString()
   elseif self.success == true then
     local out = {}
     for i = 2, #self.results do
       out[i - 1] = serialization.serialize(self.results[i], math.huge)
     end
-    return "Success" .. self:formattedName() .. "(" .. table.concat(out, ", ") .. ")" .. self:parentString()
+    return "Success" .. self:formattedName() .. "(" .. table.concat(out, ", ") .. ")" .. self:dependingString()
   else --if self.success == false then
-    return "Failure" .. self:formattedName() .. "(" .. tostring(self.results[2]) .. ")" .. self:parentString()
+    return "Failure" .. self:formattedName() .. "(" .. tostring(self.results[2]) .. ")" .. self:dependingString()
   end
 end
 
@@ -51,13 +58,25 @@ function Future:parentString()
   end
 end
 
+function Future:joinedString()
+  if self.joined[1] then
+    return "{" .. table.concat(Helper.map(self.joined, tostring), " | ") .. "}"
+  else
+    return ""
+  end
+end
+
+function Future:dependingString()
+  return self:joinedString() .. self:parentString()
+end
+
 ---sets the name of self, and returns self.
 ---@generic T Future
 ---@param self T
 ---@param name string
 ---@return T self
 function Future:named(name)
-  self.name = self.name and (self.name .. "|" .. name) or name
+  self.name = self.name and (name .. "|" .. self.name) or name -- todo: maybe new name goes before old names? that would be consistent with parents being after.
   return self
 end
 
@@ -80,6 +99,31 @@ function Future:setParents(futures)
   return self
 end
 
+---marks the current
+---@generic T Future
+---@param self T
+---@return T self
+function Future:markJoin()
+  local current = Future.current()
+  if current then
+    current.joined[#current.joined + 1] = self
+  end
+  return self
+end
+
+---wraps arguments in a InstantFuture and calls markJoin with it. returns original arguments
+---@generic T
+---@vararg T
+---@return T
+function Future.markJoinInstant(...)
+  Future.createInstant(true, ...):named("markJoin"):markJoin() -- todo: allow this name to change
+  return ...
+end
+
+local a, bv = Future.markJoinInstant(2, "w")
+
+--#endregion debugging
+
 --- creates a new future.
 ---@generic T any
 ---@param func fun():T?
@@ -94,6 +138,8 @@ function Future.create(func)
       fut.success = results[1]
     end
   )
+  Future.list[fut.t] = fut
+  fut.joined = {}
   return fut
 end
 
@@ -192,7 +238,7 @@ end
 ---@generic T any
 ---@param self Future<T>
 ---@param func fun(...:T):T2? -- takes the result of self:
----@return Future<T2>
+---@return Future|Future<T2>
 function Future:onSuccess(func)
   return Future.create(
     function()
@@ -285,11 +331,12 @@ InstantFuture.__tostring = Future.__tostring
 ---@generic T any
 ---@param success boolean
 ---@param ... T|string
----@return Future<T>
+---@return Future|Future<T>
 function Future.createInstant(success, ...)
   local fut = setmetatable({}, InstantFuture)
   fut.results = {success, ...}
   fut.success = success
+  -- since this does not wrap a function, adding it to Function.list is unnecessary and it doesn't have a key anyway
   return fut:named("instant")
 end
 
@@ -371,6 +418,13 @@ function Future.combineAll(futures, timeout)
     timeout
   ):named("combineAll")
   --:setParents(futures) -- already done in onAllComplete
+end
+
+---gets currently executing Future, the one that calls this.
+---may return nil, if not in a future, or if that future has been garbage collected.
+---@return Future?
+function Future.current()
+  return Future.list[thread.current()]
 end
 
 -- todo: combineAll (and any derivative Future) shows the progress of the previous future

@@ -72,7 +72,7 @@ function Station.prepareRecipe(stationInstance, recipe, times)
         )
         futures[#futures + 1] = InventoryHigh.gatherSpread(value, targetsAt)
     end
-    return Future.combineAll(futures)
+    return Future.combineAll(futures):named("prepareRecipe")
 end
 
 ---do whatever is needed to activate the station. blocks until completion
@@ -96,10 +96,9 @@ end
 ---@param recipe Recipe
 ---@param times integer -- watch out: should not be larger than what can be stacked.
 function Station.executeRecipe(stationInstance, recipe, times)
-    local a1 = {Station.prepareRecipe(stationInstance, recipe, times):awaitResult()}
-    local a2 = Station.activateStation(stationInstance, times)
-    local a3 = {Station.emptyOutputs(stationInstance, recipe, times):awaitResult()}
-    return {a1, a3}
+    Station.prepareRecipe(stationInstance, recipe, times):markJoin():awaitResult()
+    Future.markJoinInstant(Station.activateStation(stationInstance, times))
+    Station.emptyOutputs(stationInstance, recipe, times):markJoin():awaitResult()
 end
 
 ---comment
