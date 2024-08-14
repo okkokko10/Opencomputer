@@ -219,7 +219,7 @@ function DroneInstruction:queueExecute()
   local f = function(address)
     return self:execute(address)
   end
-  return Drones.queue(f, self.start_location)
+  return Drones.queue(f, self.start_location):named("drIn:execute")
 end
 
 return DroneInstruction

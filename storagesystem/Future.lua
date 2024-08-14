@@ -12,21 +12,72 @@ local serialization = require "serialization"
 ---@field success boolean|nil -- true for success, false for error, nil for incomplete
 ---@field results table|nil -- result of pcall(func, ...)
 ---@field private t thread
+---@field name? string
+---@field parents? Future[]
 local Future = {}
 
 Future.__index = Future
 
 function Future:__tostring()
   if self.success == nil then
-    return "Incomplete"
+    return "Incomplete" .. self:formattedName() .. self:parentString()
   elseif self.success == true then
     local out = {}
     for i = 2, #self.results do
       out[i - 1] = serialization.serialize(self.results[i], math.huge)
     end
-    return "Success(" .. table.concat(out, ", ") .. ")"
+    return "Success" .. self:formattedName() .. "(" .. table.concat(out, ", ") .. ")" .. self:parentString()
+  else --if self.success == false then
+    return "Failure" .. self:formattedName() .. "(" .. tostring(self.results[2]) .. ")" .. self:parentString()
   end
-  return "Failure(" .. tostring(self.results[2]) .. ")"
+end
+
+function Future:formattedName()
+  return self.name and ("[" .. self.name .. "]") or ""
+end
+
+---returns a string of all parents
+---empty string if no parents,
+--- <-parent if 1 parent
+--- <-{parent | parent} if multiple parents
+---@return string
+function Future:parentString()
+  if not self.parents then
+    return ""
+  elseif #self.parents == 1 then
+    return "<-" .. tostring(self.parents[1])
+  else
+    return "<-{" .. table.concat(Helper.map(self.parents, tostring), " | ") .. "}"
+  end
+end
+
+---sets the name of self, and returns self.
+---@generic T Future
+---@param self T
+---@param name string
+---@return T self
+function Future:named(name)
+  self.name = self.name and (self.name .. "|" .. name) or name
+  return self
+end
+
+---for debugging, marks the future that this waits on.
+---@generic T Future
+---@param self T
+---@param future Future
+---@return T self
+function Future:setParent(future)
+  self.parents = {future} -- todo: also adds to the parent's children.
+  return self
+end
+---for debugging, marks the futures that this waits on.
+---@generic T Future
+---@param self T
+---@param futures Future[]
+---@return T self
+function Future:setParents(futures)
+  self.parents = futures
+  return self
 end
 
 --- creates a new future.
@@ -50,7 +101,7 @@ end
 ---@param timeout? number seconds
 ---@return boolean|nil nil if timeout was reached, true otherwise.
 function Future:join(timeout)
-  return self.t:join(timeout)
+  return self.t:join(timeout) -- todo: should this mark self as a parent for currently running future. todo: how to access that
 end
 
 --- if incomplete, kills the future's execution,
@@ -81,7 +132,7 @@ end
 ---@param timeout number seconds
 ---@param success? boolean
 ---@vararg T|string|nil
----@return Future<boolean>
+---@return Future|Future<boolean>
 function Future:killAfter(timeout, success, ...)
   local args = {...}
   return self:onComplete(
@@ -89,11 +140,12 @@ function Future:killAfter(timeout, success, ...)
       return self:kill(success, table.unpack(args))
     end,
     timeout
-  )
+  ):named("killAfter"):setParent(self)
 end
 
 --- blocks until the future has completed, then returns success,result. returns nil if timed out
 ---@generic T any
+---@param self Future<T>
 ---@param timeout? number seconds
 ---@return boolean|nil,T|nil
 function Future:awaitProtected(timeout)
@@ -125,13 +177,13 @@ end
 ---@generic T any
 ---@param func fun(success:boolean|nil,...:T):T2? -- takes the result of self:awaitProtected(timeout) as input
 ---@param timeout? number seconds -- starting from when this is registered
----@return Future<T2>
+---@return Future|Future<T2>
 function Future:onComplete(func, timeout)
   return Future.create(
     function()
       return func(self:awaitProtected(timeout))
     end
-  )
+  ):named("onComplete"):setParent(self)
 end
 
 --- eventually calls the function with this future's result if it succeeds
@@ -151,7 +203,7 @@ function Future:onSuccess(func)
         error("failure- did not succeed") -- this will be caught by the pcall and sent to any further onFailure
       end
     end
-  )
+  ):named("onSuccess"):setParent(self)
 end
 
 --- eventually calls the function with this future's error if it fails
@@ -169,7 +221,7 @@ function Future:onFailure(func)
         return func(table.unpack(self.results, 2))
       end
     end
-  )
+  ):named("onFailure"):setParent(self)
 end
 
 ---
@@ -186,7 +238,7 @@ function Future.createPromise(timeout)
       os.sleep(timeout or math.huge)
       error("promise timed out")
     end
-  )
+  ):named("promise")
 end
 
 --- meant for promises, makes it a success and sets the result to arguments
@@ -238,7 +290,7 @@ function Future.createInstant(success, ...)
   local fut = setmetatable({}, InstantFuture)
   fut.results = {success, ...}
   fut.success = success
-  return fut
+  return fut:named("instant")
 end
 
 function InstantFuture:kill(...)
@@ -280,7 +332,7 @@ end
 ---@param futures Future[]
 ---@param func fun(resultses:table[],success:boolean|nil):T -- success: nil if timed out, true if all succeed, false if some fail
 ---@param timeout any
----@return Future<T>
+---@return Future|Future<T>
 function Future.onAllComplete(futures, func, timeout)
   return Future.create(
     function()
@@ -295,7 +347,7 @@ function Future.onAllComplete(futures, func, timeout)
       )
       return func(resultses, success)
     end
-  )
+  ):named("onAllComplete"):setParents(futures)
 end
 
 ---combines futures into a single future that succeeds if all succeed, and fails if any fail or timeout.
@@ -308,15 +360,17 @@ function Future.combineAll(futures, timeout)
   return Future.onAllComplete(
     futures,
     function(resultses, success)
-      if success == false then
+      if success then
+        return resultses
+      elseif success == false then
         error("failure. results: " .. table.concat(Helper.map(futures, tostring), " | "))
-      elseif success == nil then
+      else --if success == nil then
         error("timeout. results: " .. table.concat(Helper.map(futures, tostring), " | "))
       end
-      return resultses
     end,
     timeout
-  )
+  ):named("combineAll")
+  --:setParents(futures) -- already done in onAllComplete
 end
 
 -- todo: combineAll (and any derivative Future) shows the progress of the previous future

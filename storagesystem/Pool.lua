@@ -65,7 +65,7 @@ end
 ---@generic R
 ---@param usage fun(obj:T):R
 ---@param fitness fun(obj:T):number|nil
----@return Future<R>
+---@return Future|Future<R>
 function Pool:queue(usage, fitness)
     local finish_promise = Future.createPromise()
     local q = #self.in_queue + 1

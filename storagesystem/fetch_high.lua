@@ -227,7 +227,7 @@ function Drones.queue(callback, location, filter)
         return Location.pathDistance(Drones.get(address), location)
       end
     end
-  )
+  ):named("dr:queue")
 end
 
 Drones.pool_drone = Pool.create()
