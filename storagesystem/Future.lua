@@ -319,6 +319,8 @@ function Future.combineAll(futures, timeout)
   )
 end
 
+-- todo: combineAll (and any derivative Future) shows the progress of the previous future
+
 -- todo: thenReturn: future:thenReturn(foo) returns a Future that completes when future does and which return is foo
 
 return Future

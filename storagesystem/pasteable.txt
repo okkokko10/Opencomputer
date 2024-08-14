@@ -9,8 +9,9 @@ Helper = require("Helper")
 Nodes = require("navigation_nodes")
 Drones = require("fetch_high")
 Station = require("Station")
-
 longmsg.setupDebug(100, 20)
+Drones.registerNearby()
+
 
 longmsg.setupDebug(90, 10, nil, nil, "thread_drone freed")
 longmsg.setupDebug(80, 5, nil, nil, "thread_drone queue")
@@ -65,8 +66,15 @@ times = 1
 
 q = Station.executeRecipe(craf,reci,1)
 
-r = inventoryhigh.importUnknown(15,13)
-InventoryHigh.import(15, 13, itemstack, Item.getsize(itemstack))
+r = inventoryhigh.importUnknown(15,13)  
+InventoryHigh.import(15, 13, iron1, 5) -- works
 
 deposit = inventoryhigh.findDeposit(inventoryhigh.getItemFoundAt(iron1),5)
 inventoryhigh.moveMany(iron1, {{15, 13, 5, 0}}, deposit.foundAtList)
+
+
+oold = inventoryhigh.import; 
+inventoryhigh.import = function(...) print(serialization.serialize({...},math.huge)); return oold(...) end
+
+ooldMove = inventoryhigh.moveMany
+inventoryhigh.moveMany = function(...) print("moveMany ",serialization.serialize({...},math.huge)); return ooldMove(...) end

@@ -274,7 +274,7 @@ function InventoryHigh.findDeposit(item, size, filterPosition)
   if notFoundEnough then
     -- todo: find empty slots
     local empty, notFoundEnough2 = InventoryHigh.findEmpty(notFoundEnough, Item.getmaxSize(item))
-    table.move(empty, 0, #empty, #find.foundAtList + 1, find.foundAtList)
+    table.move(empty, 1, #empty, #find.foundAtList + 1, find.foundAtList)
     return find, notFoundEnough2
   end
   return find, false
@@ -369,6 +369,9 @@ function InventoryHigh.moveMany(item, from, to)
   local completions = {}
   local i = 1
   --- size still needed at to[i]
+  if not to[1] then
+    error("to is empty" .. " " .. serialization.serialize({item, "from:", from, "to:", to}, math.huge), 2)
+  end
   local needed_here = to[1][4]
   for index, foundAt in ipairs(from) do
     local size = foundAt[3]
@@ -432,6 +435,7 @@ function InventoryHigh.importUnknown(from_iid, from_slot, to_slot)
       local scan_data = InventoryHigh.getScan(messages)
       local futures = {}
       for index, itemstack in pairs(scan_data.contents) do
+        print(scan_data)
         futures[#futures + 1] = InventoryHigh.import(from_iid, index, itemstack, Item.getsize(itemstack))
       end
       Future.joinAll(futures)

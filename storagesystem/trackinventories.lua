@@ -159,6 +159,9 @@ end
 ---@param slot number
 ---@param size number
 function Inventory.changeSingle(id, slot, item, size)
+  if Inventory.isExternal(id, slot) then
+    return
+  end
   local storage, close = Inventory.read(id)
   local current = storage[slot]
   if current then
