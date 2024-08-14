@@ -55,6 +55,7 @@ end
 ---@param stationInstance StationInstance
 ---@param recipe Recipe
 ---@param times integer -- watch out: should not be larger than what can be stacked.
+---@return Future --<nil>
 function Station.prepareRecipe(stationInstance, recipe, times)
     local inputSlots = stationInstance:getInputSlots()
     local futures = {}
@@ -95,9 +96,10 @@ end
 ---@param recipe Recipe
 ---@param times integer -- watch out: should not be larger than what can be stacked.
 function Station.executeRecipe(stationInstance, recipe, times)
-    Station.prepareRecipe(stationInstance, recipe, times):awaitResult()
-    Station.activateStation(stationInstance, times)
-    Station.emptyOutputs(stationInstance, recipe, times):awaitResult()
+    local a1 = {Station.prepareRecipe(stationInstance, recipe, times):awaitResult()}
+    local a2 = Station.activateStation(stationInstance, times)
+    local a3 = {Station.emptyOutputs(stationInstance, recipe, times):awaitResult()}
+    return {a1, a3}
 end
 
 ---comment

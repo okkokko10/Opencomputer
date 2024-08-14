@@ -1,6 +1,7 @@
 local thread = require "thread"
 local os = require "os"
 local Helper = require "Helper"
+local serialization = require "serialization"
 
 ---@diagnostic disable thread
 ---@diagnostic disable os
@@ -21,7 +22,7 @@ function Future:__tostring()
   elseif self.success == true then
     local out = {}
     for i = 2, #self.results do
-      out[i - 1] = tostring(self.results[i])
+      out[i - 1] = serialization.serialize(self.results[i], math.huge)
     end
     return "Success(" .. table.concat(out, ", ") .. ")"
   end
@@ -147,7 +148,7 @@ function Future:onSuccess(func)
       if self.success then
         return func(table.unpack(self.results, 2))
       else
-        error("failure") -- this will be caught by the pcall and sent to any further onFailure
+        error("failure- did not succeed") -- this will be caught by the pcall and sent to any further onFailure
       end
     end
   )
@@ -222,6 +223,12 @@ function Future:completeWith(future)
   )
 end
 
+--- a subclass of Future that instantly returns values without creating a thread
+---@class InstantFuture: Future
+local InstantFuture = setmetatable({}, Future)
+InstantFuture.__index = InstantFuture
+InstantFuture.__tostring = Future.__tostring
+
 ---creates a dummy future that instantly completes with args
 ---@generic T any
 ---@param success boolean
@@ -233,11 +240,6 @@ function Future.createInstant(success, ...)
   fut.success = success
   return fut
 end
-
---- a subclass of Future that instantly returns values without creating a thread
----@class InstantFuture: Future
-local InstantFuture = setmetatable({}, Future)
-InstantFuture.__index = InstantFuture
 
 function InstantFuture:kill(...)
   return false
@@ -301,18 +303,17 @@ end
 ---@generic R any
 ---@param futures Future[]
 ---@param timeout? number seconds
----@param thenReturn? R
----@return Future<R>
-function Future.combineAll(futures, timeout, thenReturn)
+---@return Future
+function Future.combineAll(futures, timeout)
   return Future.onAllComplete(
     futures,
     function(resultses, success)
       if success == false then
-        error("failure")
+        error("failure. results: " .. table.concat(Helper.map(futures, tostring), " | "))
       elseif success == nil then
-        error("timeout")
+        error("timeout. results: " .. table.concat(Helper.map(futures, tostring), " | "))
       end
-      return thenReturn
+      return resultses
     end,
     timeout
   )

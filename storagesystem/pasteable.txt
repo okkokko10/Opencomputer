@@ -8,6 +8,7 @@ ih = require("inventoryhigh")
 Helper = require("Helper")
 Nodes = require("navigation_nodes")
 Drones = require("fetch_high")
+Station = require("Station")
 
 longmsg.setupDebug(100, 20)
 
@@ -52,3 +53,20 @@ component.gpu.setActiveBuffer(1)
 iron = Helper.find(inventoryhigh.allItems(),function(v,k) return Item.getname(v) == "minecraft:iron_block" end)
 iron1 = Item.copy(iron,0,1)
 reci = {needed = {iron1},stationType="crafting",using={{{2,1}}}}
+w = Station.queue(reci,1)
+
+
+craf = Station.pool.objects[1].object
+
+stationInstance = craf
+recipe = reci
+times = 1
+
+
+q = Station.executeRecipe(craf,reci,1)
+
+r = inventoryhigh.importUnknown(15,13)
+InventoryHigh.import(15, 13, itemstack, Item.getsize(itemstack))
+
+deposit = inventoryhigh.findDeposit(inventoryhigh.getItemFoundAt(iron1),5)
+inventoryhigh.moveMany(iron1, {{15, 13, 5, 0}}, deposit.foundAtList)

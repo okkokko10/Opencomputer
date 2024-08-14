@@ -273,7 +273,7 @@ function InventoryHigh.findDeposit(item, size, filterPosition)
   local find, notFoundEnough = InventoryHigh.find(item, size, filterPosition, 4)
   if notFoundEnough then
     -- todo: find empty slots
-    local empty, notFoundEnough2 = InventoryHigh.findEmpty(notFoundEnough)
+    local empty, notFoundEnough2 = InventoryHigh.findEmpty(notFoundEnough, Item.getmaxSize(item))
     table.move(empty, 0, #empty, #find.foundAtList + 1, find.foundAtList)
     return find, notFoundEnough2
   end
@@ -282,6 +282,7 @@ end
 
 ---FoundAt[] addable slots, split to maxSize
 ---@param needed integer
+---@param maxSize integer
 ---@return FoundAt[]
 ---@return false|integer notFoundEnough
 function InventoryHigh.findEmpty(needed, maxSize)
@@ -355,7 +356,7 @@ function InventoryHigh.gatherSpread(item, targets)
   if not found then
     return nil
   end
-  return InventoryHigh.moveMany(item, found, targets)
+  return InventoryHigh.moveMany(item, found.foundAtList, targets)
 end
 
 --- moves items from "from" to "to"
@@ -369,12 +370,33 @@ function InventoryHigh.moveMany(item, from, to)
   local i = 1
   --- size still needed at to[i]
   local needed_here = to[1][4]
-  for _, foundAt in ipairs(from) do
+  for index, foundAt in ipairs(from) do
     local size = foundAt[3]
+    if not size then
+      error(
+        "size is nil: i=" ..
+          i ..
+            " size=" ..
+              size ..
+                " " ..
+                  serialization.serialize(
+                    {item, "from:", from, "to:", to, "foundAt:", foundAt, "index:", index},
+                    math.huge
+                  ),
+        2
+      )
+    end
     while size > 0 do
       if needed_here == 0 then
         i = i + 1
         needed_here = to[i][4]
+      end
+      if not needed_here then
+        error(
+          "addable nil: i=" ..
+            i .. " size=" .. size .. " " .. serialization.serialize({item, "from:", from, "to:", to}, math.huge),
+          2
+        )
       end
       local balanced_size = math.min(size, needed_here)
       completions[#completions + 1] =
@@ -395,7 +417,7 @@ end
 function InventoryHigh.import(iid, slot, item, size)
   local itemFoundAt = InventoryHigh.getItemFoundAt(item)
   local deposit = InventoryHigh.findDeposit(itemFoundAt, size)
-  return InventoryHigh.moveMany(item, {{iid, slot, size, 0}}, deposit)
+  return InventoryHigh.moveMany(item, {{iid, slot, size, 0}}, deposit.foundAtList)
 end
 
 ---scans an inventory and moves things to the storage from there.
