@@ -414,7 +414,6 @@ function InventoryHigh.importUnknown(from_iid, from_slot, to_slot)
       local scan_data = InventoryHigh.getScan(messages)
       local futures = {}
       for index, itemstack in pairs(scan_data.contents) do
-        print(scan_data)
         futures[#futures + 1] = InventoryHigh.import(from_iid, index, itemstack, Item.getsize(itemstack))
       end
       Future.joinAll(futures)

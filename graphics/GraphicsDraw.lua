@@ -198,4 +198,83 @@ function GraphicsDraw:drawColorText(texts)
     end
 end
 
+---writes to output, string but brackets are highlighted
+---@param text string
+---@param colors? table
+---@param start? integer -- which index of colors to start at
+---@param background_mult? number
+function GraphicsDraw.printBrackets(text, colors, start, background_mult)
+    colors = colors or {0xFF0000, 0x00FF00, 0x0000FF, 0x00FFFF, 0xFF00FF, 0xFFFF00}
+    assert(colors[1], "there must be colors")
+    local term = require("term")
+    local originalForeground = term.gpu().getForeground()
+    local originalBackground = term.gpu().getBackground()
+    local color_index_size = #colors
+    local opening = "%[%(%{"
+    local closing = "%]%)%}"
+    local brackets = "()([" .. opening .. closing .. "])()"
+    background_mult = background_mult or 0.5
+
+    local function darken(color, mult)
+        local out = 0
+        for i = 0, 24, 8 do
+            out = out | (math.min(math.floor((color & (0xFF << i)) * mult), (0xFF << i)) & (0xFF << i))
+        end
+        return out
+    end
+
+    local function setBackground(ind)
+        term.gpu().setBackground(darken(colors[ind + 1], background_mult))
+    end
+    local function setForeground(ind)
+        term.gpu().setForeground(colors[ind + 1])
+    end
+    local function baseForeground()
+        term.gpu().setForeground(originalForeground)
+    end
+    local function baseBackground()
+        term.gpu().setBackground(originalBackground)
+    end
+
+    local color_index = (start or 1) - 1
+
+    ---update color
+    ---nil argument means set the background color
+    ---@param bracket string|nil
+    local function updateColor(bracket)
+        if bracket then
+            if string.match(bracket, "[" .. opening .. "]") then
+                setBackground(color_index)
+                color_index = (color_index + 1) % color_index_size
+                setForeground(color_index)
+            else
+                setForeground(color_index)
+                color_index = (color_index - 1) % color_index_size
+                setBackground(color_index)
+            end
+        else
+            setBackground(color_index)
+            baseForeground()
+        end
+    end
+
+    local i = 1
+    while i <= #text do
+        local bracket_index, bracket, next_index = string.match(text, brackets, i)
+        if not bracket_index then
+            bracket_index = #text + 1
+            next_index = #text + 2
+        end
+        updateColor()
+        term.write(string.sub(text, i, bracket_index - 1))
+        if bracket then
+            updateColor(bracket)
+            term.write(bracket)
+        end
+        i = next_index
+    end
+    baseBackground()
+    baseForeground()
+end
+
 return GraphicsDraw

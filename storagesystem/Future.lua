@@ -90,6 +90,7 @@ function Future:setParent(future)
   return self
 end
 ---for debugging, marks the futures that this waits on.
+---note: uses the table "futures" itself.
 ---@generic T Future
 ---@param self T
 ---@param futures Future[]
@@ -119,8 +120,6 @@ function Future.markJoinInstant(...)
   Future.createInstant(true, ...):named("markJoin"):markJoin() -- todo: allow this name to change
   return ...
 end
-
-local a, bv = Future.markJoinInstant(2, "w")
 
 --#endregion debugging
 
@@ -319,6 +318,7 @@ function Future:completeWith(future)
       return self:completePromise(success, ...)
     end
   )
+  self:setParent(future)
 end
 
 --- a subclass of Future that instantly returns values without creating a thread
@@ -336,6 +336,7 @@ function Future.createInstant(success, ...)
   local fut = setmetatable({}, InstantFuture)
   fut.results = {success, ...}
   fut.success = success
+  fut.joined = {}
   -- since this does not wrap a function, adding it to Function.list is unnecessary and it doesn't have a key anyway
   return fut:named("instant")
 end
