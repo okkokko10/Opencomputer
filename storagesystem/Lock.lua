@@ -21,6 +21,10 @@ function Lock:getCurrent(iid, slot)
     return self.Inventory.getInSlot(iid, slot)
 end
 
+function Lock:isExternal(iid, slot)
+    return self.Inventory.isExternal(iid, slot)
+end
+
 ---
 ---@param iid IID
 ---@param slot integer
@@ -44,6 +48,9 @@ end
 ---@param item Item
 ---@return boolean|integer if true, how much at most
 function Lock:canAdd(id, slot, size, item)
+    if self:isExternal(id, slot) then
+        return true
+    end
     local current_item = self:getCurrent(id, slot)
     if current_item and not Item.equals(item, current_item) then
         return false
@@ -98,6 +105,9 @@ end
 ---@param item Item
 ---@return boolean|integer if true, how much at most
 function Lock:canRemove(id, slot, size, item)
+    if self:isExternal(id, slot) then
+        return true
+    end
     local current_item = self:getCurrent(id, slot)
     if not Item.equals(item, current_item) then
         return false

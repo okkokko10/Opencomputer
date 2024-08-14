@@ -120,6 +120,10 @@ function Inventory.getSpace(id)
   return Inventory.inventories[id].space
 end
 
+function Inventory.isExternal(iid, slot)
+  return Inventory.inventories[iid].isExternal
+end
+
 --- update the inventory
 --- contents_new must be added only after contents_changed has been applied.
 ---@param id IID
