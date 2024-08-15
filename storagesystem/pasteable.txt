@@ -9,6 +9,7 @@ Helper = require("Helper")
 Nodes = require("navigation_nodes")
 Drones = require("fetch_high")
 Station = require("Station")
+gdraw = require("graphics.GraphicsDraw")
 longmsg.setupDebug(100, 20)
 Drones.registerNearby()
 
@@ -78,3 +79,8 @@ inventoryhigh.import = function(...) print(serialization.serialize({...},math.hu
 
 ooldMove = inventoryhigh.moveMany
 inventoryhigh.moveMany = function(...) print("moveMany ",serialization.serialize({...},math.huge)); return ooldMove(...) end
+
+
+gdraw.printBrackets(tostring(w), function(i) return gdraw.colorRGB(1/(i/5+1),(i%7)/7,(i%2)) end,nil,0)
+
+gdraw.printBrackets("{{{{{{{{{{{{{{}}}}}}}}}}}}}}", function(i) return gdraw.colorRGB(1/(i/5+1),(i%7)/7,(i%2)) end,nil,0)

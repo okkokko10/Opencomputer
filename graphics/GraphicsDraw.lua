@@ -198,36 +198,51 @@ function GraphicsDraw:drawColorText(texts)
     end
 end
 
+function GraphicsDraw.multiplyColor(color, mult)
+    local out = 0
+    for i = 0, 16, 8 do
+        out = out | (math.min(math.floor((color & (0xFF << i)) * mult), (0xFF << i)) & (0xFF << i))
+    end
+    return out
+end
+function GraphicsDraw.colorRGB(r, g, b)
+    local function convert(x)
+        return math.ceil(math.max(0, math.min(1, x)) * 0xFF)
+    end
+    return convert(r) << 16 | convert(g) << 8 | convert(b)
+end
+
 ---writes to output, string but brackets are highlighted
 ---@param text string
----@param colors? table
+---@param colors? integer[]|fun(ind:integer):integer -- if table, automatically loops through it
 ---@param start? integer -- which index of colors to start at
 ---@param background_mult? number
 function GraphicsDraw.printBrackets(text, colors, start, background_mult)
     colors = colors or {0xFF0000, 0x00FF00, 0x0000FF, 0x00FFFF, 0xFF00FF, 0xFFFF00}
-    assert(colors[1], "there must be colors")
+    ---@type fun(ind:integer):integer
+    local getColor
+    if type(colors) == "table" then
+        getColor = function(ind)
+            return colors[(ind % #colors) + 1]
+        end
+    else
+        getColor = colors
+    end
+
+    assert(type(getColor(0)) == "number", "there must be colors")
     local term = require("term")
     local originalForeground = term.gpu().getForeground()
     local originalBackground = term.gpu().getBackground()
-    local color_index_size = #colors
     local opening = "%[%(%{"
     local closing = "%]%)%}"
     local brackets = "()([" .. opening .. closing .. "])()"
     background_mult = background_mult or 0.5
 
-    local function darken(color, mult)
-        local out = 0
-        for i = 0, 24, 8 do
-            out = out | (math.min(math.floor((color & (0xFF << i)) * mult), (0xFF << i)) & (0xFF << i))
-        end
-        return out
-    end
-
     local function setBackground(ind)
-        term.gpu().setBackground(darken(colors[ind + 1], background_mult))
+        term.gpu().setBackground(GraphicsDraw.multiplyColor(getColor(ind), background_mult))
     end
     local function setForeground(ind)
-        term.gpu().setForeground(colors[ind + 1])
+        term.gpu().setForeground(getColor(ind))
     end
     local function baseForeground()
         term.gpu().setForeground(originalForeground)
@@ -236,7 +251,7 @@ function GraphicsDraw.printBrackets(text, colors, start, background_mult)
         term.gpu().setBackground(originalBackground)
     end
 
-    local color_index = (start or 1) - 1
+    local color_index = (start or 0)
 
     ---update color
     ---nil argument means set the background color
@@ -245,11 +260,11 @@ function GraphicsDraw.printBrackets(text, colors, start, background_mult)
         if bracket then
             if string.match(bracket, "[" .. opening .. "]") then
                 setBackground(color_index)
-                color_index = (color_index + 1) % color_index_size
+                color_index = color_index + 1
                 setForeground(color_index)
             else
                 setForeground(color_index)
-                color_index = (color_index - 1) % color_index_size
+                color_index = color_index - 1
                 setBackground(color_index)
             end
         else
