@@ -63,7 +63,13 @@ end
 ---@return number
 function Location.pathDistance(self, other)
   local path = Location.pathfind(self, other)
-  return path and #path or math.huge
+  return path and Location.pathPathDistance(path) or math.huge
+end
+
+--- length of a path in space. not necessarily euclidean distance.
+---@param path Position[]
+function Location.pathPathDistance(path)
+  return #path
 end
 
 --- modifies target: copies location data of base to target. leave nil to get a new copy

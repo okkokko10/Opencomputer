@@ -105,9 +105,10 @@ end
 ---@generic K,V
 ---@param target table<K,V>
 ---@param fun fun(v:V,k:K):number? -- return math.huge or nil to ignore
+---@param enough? number -- if a value less than or equal to this is found, it is returned early
 ---@return V|nil
 ---@return K|nil
-function Helper.min(target, fun)
+function Helper.min(target, fun, enough)
   local current_points = math.huge
   local current_value = nil
   local current_key = nil
@@ -116,6 +117,9 @@ function Helper.min(target, fun)
     if points and points < current_points then
       current_value = v
       current_key = k
+      if enough and current_value <= enough then
+        break
+      end
     end
   end
   return current_value, current_key

@@ -31,6 +31,12 @@ Drones.DRONES_PATH = "/usr/storage/drones.csv"
 ---@type table<Address,Drone> --- [address]: {address=, business:(order)=, nodeparent=, x=, y=, z=, status=(drone's latest status report)}
 Drones.drones = filehelp.loadCSV(Drones.DRONES_PATH, "address")
 
+Drones.CHARGERS_PATH = "usr/storage/chargers.txt"
+
+--- locations of charging stations
+---@type Location[]
+Drones.chargers = filehelp.loadCSV(Drones.CHARGERS_PATH)
+
 --- gets the drone with this address
 ---@param address string
 ---@return Drone
@@ -44,9 +50,7 @@ end
 
 local function registering(address, distance)
   Drones.drones[address] = {
-    address = address,
-    business = true
-    -- nodeparent, x, y, z are unknown
+    address = address
   }
   local start = distance
   local ofs = 1 / (distance * distance + 100)
@@ -179,10 +183,66 @@ function Drones.queue(callback, location, filter)
   ):named("dr:queue")
 end
 
+---@class DroneStatus
+---@field space integer
+---@field storage table[] -- same as ScanData
+---@field freeMemory integer
+---@field totalMemory integer
+---@field energy integer
+---@field maxEnergy integer
+---@field uptime number
+---@field x number
+---@field y number
+---@field z number
+---@field cmd_id number|nil
+---@field cmd_index integer|nil
+---@field offset number
+---@field extra any|nil
+---@field ver string
+
+---to be set as pool maintenance
+---@param address Address
+---@return boolean
+function Drones.maintenanceStart(address)
+  api.send(address, nil, nil, api.actions.status()) -- send the drone the instruction
+  local message = longmsg.pullTable({remoteAddress = address, name = "status"})
+  ---@type DroneStatus
+  local status = serialization.unserialize(message.message)
+  if status.energy / status.maxEnergy > 0.5 then
+    return false
+  else
+    Drones.maintenanceMain(address)
+    return true
+  end
+end
+
+function Drones.maintenanceMain(address)
+  local DroneInstruction = require("DroneInstruction")
+  local closestCharger =
+    Helper.min(
+    ---@type (DroneAction_moveto[]?)[]
+    Helper.map(
+      Drones.chargers,
+      function(value)
+        return Location.pathfind(Drones.get(address), value)
+      end
+    ),
+    Location.pathPathDistance
+  )
+  if not closestCharger then
+    error("no chargers connected")
+  end
+
+  DroneInstruction.at(closestCharger):execute(address)
+end
+
 Drones.pool_drone = Pool.create()
 for address, drone in pairs(Drones.drones) do
   Drones.pool_drone:register(address)
 end
+
+Drones.pool_drone:setMaintenance(Drones.maintenanceStart)
+Drones.pool_drone:setMaintenancePeriod(60)
 
 function Drones.registerNearby()
   api.send(nil, nil, nil, api.actions.echo("register fetcher")) -- todo move from receiveEcho

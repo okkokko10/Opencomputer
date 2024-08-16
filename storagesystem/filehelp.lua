@@ -155,15 +155,17 @@ end
 ---@param keyname string|integer|nil
 ---@return table
 function filehelp.loadCSV(filepath, keyname)
-  local amount = 0 -- unimplemented
+  local amount = 0
   return Helper.mapWithKeys(
     filehelp.loadf(filepath),
     function(line)
       local out = serialization.unserialize(line) -- empty file
       if out then
         amount = amount + 1
+        return out, out and (keyname and out[keyname] or amount)
+      else
+        return nil, nil
       end
-      return out, out and (keyname and out[keyname] or amount)
     end
   )
 end
