@@ -126,8 +126,9 @@ function InventoryHigh.scanAll()
   -- end)
   local futures = {}
   for k, inv_data in pairs(ti.inventories) do
-    local future = InventoryHigh.scanSingle(inv_data.id)
-    futures[#futures + 1] = future
+    if not inv_data.isExternal then
+      futures[#futures + 1] = InventoryHigh.scanSingle(inv_data.id)
+    end
   end
   return Future.combineAll(futures)
 end

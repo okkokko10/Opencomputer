@@ -217,9 +217,9 @@ end
 ---@param colors? integer[]|fun(ind:integer):integer -- if table, automatically loops through it
 ---@param start? integer -- which index of colors to start at
 ---@param background_mult? number
-function GraphicsDraw.printBrackets(text, colors, start, background_mult)
+function GraphicsDraw.printBrackets(text, colors, start, background_mult, doNewLine)
     colors = colors or {0xFF0000, 0x00FF00, 0x0000FF, 0x00FFFF, 0xFF00FF, 0xFFFF00}
-    ---@type fun(ind:integer):integer
+    --[[@type fun(ind:integer):integer]]
     local getColor
     if type(colors) == "table" then
         getColor = function(ind)
@@ -253,19 +253,24 @@ function GraphicsDraw.printBrackets(text, colors, start, background_mult)
 
     local color_index = (start or 0)
 
+    --[[
     ---update color
     ---nil argument means set the background color
-    ---@param bracket string|nil
+    ---@param bracket string|nil 
+    --]]
     local function updateColor(bracket)
         if bracket then
             if string.match(bracket, "[" .. opening .. "]") then
-                setBackground(color_index)
                 color_index = color_index + 1
-                setForeground(color_index)
+                return function()
+                    setBackground(color_index - 1)
+                    setForeground(color_index)
+                end
             else
                 setForeground(color_index)
                 color_index = color_index - 1
                 setBackground(color_index)
+                return false
             end
         else
             setBackground(color_index)
@@ -283,8 +288,19 @@ function GraphicsDraw.printBrackets(text, colors, start, background_mult)
         updateColor()
         term.write(string.sub(text, i, bracket_index - 1))
         if bracket then
-            updateColor(bracket)
+            local wentDown = updateColor(bracket)
+            if doNewLine and wentDown then
+                baseBackground()
+                term.write("\n" .. string.rep(" ", color_index))
+            end
+            if wentDown then
+                wentDown()
+            end
             term.write(bracket)
+            if doNewLine and not wentDown then
+                baseBackground()
+                term.write("\n" .. string.rep(" ", color_index))
+            end
         end
         i = next_index
     end
