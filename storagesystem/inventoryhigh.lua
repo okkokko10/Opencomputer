@@ -66,23 +66,6 @@ function InventoryHigh.allItems()
   return all_items, space, space_taken
 end
 
----@deprecated
-function InventoryHigh.scanAllOne()
-  local instr =
-    DroneInstruction.join(
-    Helper.map(
-      ti.inventories,
-      function(inv_data)
-        return DroneInstruction.scan(inv_data.id)
-      end
-    )
-  )
-  local droneAddr = Drones.getFreeDrone()
-  if droneAddr then
-    return true, DroneInstruction.execute(instr, droneAddr) -- todo deprecated
-  end
-end
-
 ---@class ScanData
 ---@field id IID
 ---@field time_start number

@@ -30,17 +30,6 @@ Drones.DRONES_PATH = "/usr/storage/drones.csv"
 
 ---@type table<Address,Drone> --- [address]: {address=, business:(order)=, nodeparent=, x=, y=, z=, status=(drone's latest status report)}
 Drones.drones = filehelp.loadCSV(Drones.DRONES_PATH, "address")
--- {
---   address=,
---   business = nil,
---   location = {
---     parent = 1,
---     x = 0,
---     y = 0,
---     z = 0,
---   },
---   status = {}
--- }
 
 --- gets the drone with this address
 ---@param address string
@@ -53,59 +42,60 @@ function Drones.save()
   filehelp.saveCSV(Drones.drones, Drones.DRONES_PATH)
 end
 
-local registering = {}
+local function registering(address, distance)
+  Drones.drones[address] = {
+    address = address,
+    business = true
+    -- nodeparent, x, y, z are unknown
+  }
+  local start = distance
+  local ofs = 1 / (distance * distance + 100)
+
+  api.send(
+    address,
+    nil,
+    nil,
+    api.actions.execute("ofs=" .. ofs .. ";vel=" .. ofs),
+    api.actions.move(1, 0, 0),
+    api.actions.echo("register fetcher x"),
+    api.actions.move(-1, 1, 0),
+    api.actions.echo("register fetcher y"),
+    api.actions.move(0, -1, 1),
+    api.actions.echo("register fetcher z"),
+    api.actions.move(0, 0, -1),
+    api.actions.echo("register fetcher o"),
+    api.actions.execute("ofs=0.1;vel=2")
+  )
+  local xd = Drones.pullEcho(address, "register fetcher x").distance
+  local yd = Drones.pullEcho(address, "register fetcher y").distance
+  local zd = Drones.pullEcho(address, "register fetcher z").distance
+  local origin = Drones.pullEcho(address, "register fetcher o").distance
+
+  local o2 = origin * origin
+  local pos = longmsg.position
+
+  local x = ((xd * xd - o2) - 1) * 0.5 + pos.x
+  local y = ((yd * yd - o2) - 1) * 0.5 + pos.y
+  local z = ((zd * zd - o2) - 1) * 0.5 + pos.z
+  local closest = Nodes.findclosest(x, y, z)
+  if not closest then
+    Drones.drones[address] = nil
+    error("no close node found")
+  end
+  local drone = Drones.drones[address]
+  drone.x = x
+  drone.y = y
+  drone.z = z
+  drone.nodeparent = closest.nodeid
+  api.send(address, nil, nil, api.actions.updateposition(x, y, z), api.actions.execute('d.setStatusText("f"..ver)'))
+  Drones.pool_drone:register(address)
+end
 
 local function receiveEcho(address, message, distance)
   if message == "register fetcher" then
     if not Drones.drones[address] then
-      Drones.drones[address] = {
-        address = address,
-        business = true
-        -- nodeparent, x, y, z are unknown
-      }
-      registering[address] = {distance}
-      local ofs = 1 / (distance * distance + 100)
-
-      api.send(
-        address,
-        nil,
-        nil,
-        api.actions.execute("ofs=" .. ofs .. ";vel=" .. ofs),
-        api.actions.move(1, 0, 0),
-        api.actions.echo("register fetcher x"),
-        api.actions.move(-1, 1, 0),
-        api.actions.echo("register fetcher y"),
-        api.actions.move(0, -1, 1),
-        api.actions.echo("register fetcher z"),
-        api.actions.move(0, 0, -1),
-        api.actions.echo("register fetcher o"),
-        api.actions.execute("ofs=0.1;vel=2")
-      )
+      registering(address, distance)
     end
-  elseif message == "register fetcher x" then
-    registering[address][2] = distance
-  elseif message == "register fetcher y" then
-    registering[address][3] = distance
-  elseif message == "register fetcher z" then
-    registering[address][4] = distance
-  elseif message == "register fetcher o" then
-    registering[address][5] = distance
-    local start, xd, yd, zd, origin = table.unpack(registering[address])
-    local o2 = origin * origin
-    local pos = longmsg.position
-
-    local x = ((xd * xd - o2) - 1) * 0.5 + pos.x
-    local y = ((yd * yd - o2) - 1) * 0.5 + pos.y
-    local z = ((zd * zd - o2) - 1) * 0.5 + pos.z
-    local closest = Nodes.findclosest(x, y, z)
-    local drone = Drones.drones[address]
-    drone.x = x
-    drone.y = y
-    drone.z = z
-    drone.nodeparent = closest.nodeid
-    api.send(address, nil, nil, api.actions.updateposition(x, y, z), api.actions.execute('d.setStatusText("f"..ver)'))
-    Drones.pool_drone:register(address)
-    Drones.setFree(address)
   end
 end
 
@@ -148,48 +138,7 @@ function Drones.addDrone(address, nodeparent, x, y, z)
     y = y,
     z = z
   }
-end
-
----@deprecated
-function Drones.setBusy(address)
-  Drones.drones[address].business = true
-end
-
----@deprecated
-function Drones.isFree(address)
-  return not Drones.drones[address].business
-end
-
---- gets a drone that is not busy
----@deprecated
----@param location? Location prioritizes drones close to this location
----@param filter? fun(address:Address):boolean does a drone fit
----@return Address?
-function Drones.getFreeDrone(location, filter)
-  filter = filter or function()
-      return true
-    end
-  local temp =
-    Helper.min(
-    Drones.drones,
-    function(drone, address)
-      if drone.business or not filter(address) then
-        return math.huge
-      elseif not location then
-        return 0
-      else
-        return Location.pathDistance(drone, location)
-      end
-    end
-  )
-  return temp and temp.address
-end
-
---- sets a drone to be free. pushes a notification
----@deprecated Pool does this automatically
----@param address string
-function Drones.setFree(address)
-  -- event.push("thread_drone freed", address)
+  Drones.pool_drone:register(address)
 end
 
 --- pulls an echo from the drone. blocks
