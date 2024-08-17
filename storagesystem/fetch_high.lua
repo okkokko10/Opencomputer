@@ -31,7 +31,7 @@ Drones.DRONES_PATH = "/usr/storage/drones.csv"
 ---@type table<Address,Drone> --- [address]: {address=, business:(order)=, nodeparent=, x=, y=, z=, status=(drone's latest status report)}
 Drones.drones = filehelp.loadCSV(Drones.DRONES_PATH, "address")
 
-Drones.CHARGERS_PATH = "usr/storage/chargers.txt"
+Drones.CHARGERS_PATH = "/usr/storage/chargers.txt"
 
 --- locations of charging stations
 ---@type Location[]
@@ -48,7 +48,7 @@ function Drones.save()
   filehelp.saveCSV(Drones.drones, Drones.DRONES_PATH)
 end
 
-local function registering(address, distance)
+function Drones.registering(address, distance)
   Drones.drones[address] = {
     address = address
   }
@@ -98,7 +98,11 @@ end
 local function receiveEcho(address, message, distance)
   if message == "register fetcher" then
     if not Drones.drones[address] then
-      registering(address, distance)
+      Future.create(
+        function()
+          Drones.registering(address, distance)
+        end
+      ) -- todo: move somewhere else
     end
   end
 end
@@ -220,15 +224,12 @@ function Drones.maintenanceMain(address)
   local DroneInstruction = require("DroneInstruction")
   local closestCharger =
     Helper.min(
-    ---@type (DroneAction_moveto[]?)[]
-    Helper.map(
-      Drones.chargers,
-      function(value)
-        return Location.pathfind(Drones.get(address), value)
-      end
-    ),
-    Location.pathPathDistance
+    Drones.chargers,
+    function(value)
+      return Location.pathDistance(Drones.get(address), value)
+    end
   )
+
   if not closestCharger then
     error("no chargers connected")
   end

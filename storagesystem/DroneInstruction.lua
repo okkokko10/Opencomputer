@@ -57,7 +57,7 @@ function DroneInstruction.movefrom(self, location)
   return DroneInstruction.make(
     Location.copy(location),
     self.finish_location,
-    Helper.flatten({Location.pathfind(location, self.start_location), self.actions})
+    Helper.flatten({Location.pathfind(location, self.start_location) or error("no valid pathfinding"), self.actions})
   )
 end
 
