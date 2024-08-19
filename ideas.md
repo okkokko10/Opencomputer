@@ -213,3 +213,217 @@ list all items used in recipes
 GraphicsItem
 
 todo: Story, an async coroutine with phases
+
+poll Integrated Dynamics on the shape of shaped crafting recipes
+
+New data structure for item storage:
+```
+
+amounts = amount, amount_adding, amount_removing
+
+
+
+items = {
+  ["minecraft"] = {
+    ["wool"] = {
+      [0]={
+        maxSize = 64,
+
+        amount = ?,
+        amount_adding = ?, 
+        amount_removing = ?,
+
+        labels = {
+          ["White Wool"] = { -- maybe this could be stored separately, since often it's not needed.
+            ["abcdefghqwerty"] = {
+              hasTag = false,
+
+              nbt = ?,
+              extra = ?,
+
+              amount = ?,
+              amount_adding = ?, 
+              amount_removing = ?,
+
+              stacks = {
+                {iid, slot, amount, amount_adding, amount_removing}
+              }
+            }
+          },
+          
+        }
+      }
+    },
+    ["iron_pickaxe"] = {
+      ["damage"] = {
+        maxSize = 1,
+
+        amount = ?,
+        amount_adding = ?, 
+        amount_removing = ?,
+
+        labels = {
+          ["Iron Pickaxe"] = {
+            ["abcdefghqwerty"] = {
+              hasTag = false,
+              damage = ?,
+              maxDamage = ?,
+
+              nbt = ?,
+              extra = ?,
+
+              amount = ?,
+              amount_adding = ?, 
+              amount_removing = ?,
+
+              stacks = {
+                {iid, slot, amount, amount_adding, amount_removing}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+fluids = {
+  ["xpjuice"] = {
+    ["Liquid XP"] = {
+      amounts = ?,
+
+      stacks = {
+        {fluidtank, slot, amount, amount_adding, amount_removing}
+      }
+    }
+  }
+}
+
+
+
+byLabel = {
+  ["White Wool"] = {
+    {"minecraft","wool",0}, -- Item("minecraft","wool",0,"White Wool")
+  }
+}
+
+
+Item:
+  mod
+  name
+  meta?
+  label?
+  hash?
+  iid?
+  slot?
+  
+  =>
+
+  maxSize
+  hasTag
+  damage
+  maxDamage
+
+  nbt -- if label and hash both have nbt, they are combined
+  extra -- these have to be added manually. if these exist, the entry won't be removed even if amounts fall to 0
+
+  amount = ?,
+  amount_adding = ?, 
+  amount_removing = ?,
+
+
+rather:
+
+Item_meta:
+  mod, name, meta,
+  amounts,
+  maxSize
+
+Item_label:
+  Item_meta,label,
+  amounts,
+  nbt, extra
+
+Item_hash:
+  Item_label,hash,
+  amounts,
+  nbt, extra,
+  hasTag, damage, maxDamage
+
+Item_stack:
+  Item_hash, {iid,slot},
+  amounts
+
+all of them are Item, and have a method to get their associations.
+amounts is a sum of specific amounts'
+
+ItemStackPortion:
+  Item_stack, amount  -- an Item that refers to a part of a stack. For example inventoryhigh.find returns a list of these.
+
+
+Item(mod,name,meta) -> Item_meta
+Item(mod,name,meta,label) -> Item_label
+Item(mod,name,meta,label,hash) -> Item_hash
+Item(mod,name,meta,label,hash,{iid,slot}) -> Item_stack
+
+Item.byLabel(label) -> Item_label
+
+Items can be virtual, where they do not represent an item in the system. used in recipes.
+
+
+
+
+
+fluids and oreDict could be
+Item("fluid","fire_water",0,"Fire Water","",{fluidsystem,"fire_water Fire Water"})
+
+
+
+```
+
+items are arranged mod -> name -> meta(maxSize, amount...) -> label -> hash(hasTag,amount...) -> stack
+
+does it even matter what items are in a certain inventory? maybe it's enough for an inventory to know whether a slot is empty.
+so `(iid, slot) -> Item` does not need to be possible.
+
+
+Ways to search items. 
+
+by label, by part of a label.
+
+
+item classes that don't care about certain values (should this be done? recipes shouldn't need oredict)
+
+
+
+
+
+which is better, this
+```
+stacks = {
+  {iid, slot, amount, amount_adding, amount_removing}
+}
+```
+or this,
+```
+stacks = {
+  [iid]={
+    [slot]={amount, amount_adding, amount_removing}
+  }
+}
+```
+or this?
+```
+stacks = {
+  ["{iid,slot}"]={amount, amount_adding, amount_removing}
+}
+```
+
+maybe {iid,slot} could be generalized
+
+
+todo: fluid carrying items contain extra information not captured.
+todo: there is a previously missed inventory_controller.getAllStacks
+todo: send drones code.
+
+todo: integrated dynamics fluid system, possibly also inventory system.
