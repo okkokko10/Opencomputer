@@ -336,8 +336,7 @@ rather:
 
 Item_meta:
   mod, name, meta,
-  amounts,
-  maxSize
+  amounts
 
 Item_label:
   Item_meta,label,
@@ -348,7 +347,7 @@ Item_hash:
   Item_label,hash,
   amounts,
   nbt, extra,
-  hasTag, damage, maxDamage
+  hasTag, damage, maxDamage, maxSize
 
 Item_stack:
   Item_hash, {iid,slot},

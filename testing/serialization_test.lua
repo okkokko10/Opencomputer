@@ -16,7 +16,7 @@ local function serialize(data)
     elseif t == "table" then
         local out = "{"
         for k, v in pairs(data) do
-            out = out .. serialize(k) .. "=" .. serialize(v) .. ","
+            out = out .. "[" .. serialize(k) .. "]" .. "=" .. serialize(v) .. ","
         end
         return out .. "}"
     end
