@@ -34,7 +34,9 @@ function TreeNode:makeLevel(key, sums)
     end
     local chi = self.children[key]
     if chi then
-        chi:addSums(sums)
+        if sums then
+            chi:addSums(sums)
+        end
         return chi
     else
         if sums then
