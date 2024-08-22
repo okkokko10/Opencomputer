@@ -84,3 +84,12 @@ inventoryhigh.moveMany = function(...) print("moveMany ",serialization.serialize
 gdraw.printBrackets(tostring(w), function(i) return gdraw.colorRGB(1/(i/5+1),(i%7)/7,(i%2)) end,nil,0)
 
 gdraw.printBrackets("{{{{{{{{{{{{{{}}}}}}}}}}}}}}", function(i) return gdraw.colorRGB(1/(i/5+1),(i%7)/7,(i%2)) end,nil,0)
+
+
+
+reci = reci or {}; local i = 1; for k in component.inventory_controller.getAllStacks(3) do if k.name then local se=serialization.serialize(k); if not reci[se] then reci[se] = {} end reci[se][i]=1; end i=i+1 end 
+
+reci = {}; local i = 1; for k in component.inventory_controller.getAllStacks(3) do if k.name then local se=(k.name .. " " .. k.damage); if not reci[se] then reci[se] = {} end reci[se][i]=1; end i=i+1 end 
+
+for i = 1,5 do component.robot.select(i); local k = ic.getStackInInternalSlot(i);local se=(k.name .. " " .. k.damage); for pos,v in pairs(reci[se]) do ic.dropIntoSlot(3,pos,v) end end
+

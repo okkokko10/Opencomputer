@@ -426,3 +426,18 @@ todo: there is a previously missed inventory_controller.getAllStacks
 todo: send drones code.
 
 todo: integrated dynamics fluid system, possibly also inventory system.
+
+todo: when an item is scanned, see if there is anything extra associated with it.
+ when a silent's gems weapon, or any damaged tool, trash, is found, it is bunched with others like it.
+ So, an item category can be made fuzzy, meaning all items that match its description have some of their data overwritten.
+ Also, the item category and the level of obfuscation don't have to be the same.
+  for example, "all items where meta (damage) is not 0, and maxDamage also is not 0" have their meta set to "damage". 
+
+
+0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,.-;:_"#(){}[]
+
+faster placing items in crafty crates with integrated dynamics.
+ sign: at index i is an encoded number n that tells what input slot n the item belonging to crafter slot i is in. 
+integrated dynamics 
+ parse sign text
+ can IntDyn be programmed with text using reduce on a list of operators gotten from a string?

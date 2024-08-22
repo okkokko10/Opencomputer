@@ -1,3 +1,4 @@
+local Helper = require "Helper"
 --- described in ideas.md around line 230,340
 --- ability to store in a file efficiently not yet implemented
 
@@ -32,6 +33,7 @@ function TreeNode:makeLevel(key, sums)
     if not self.children then
         self.children = {}
     end
+
     local chi = self.children[key]
     if chi then
         if sums then
@@ -41,11 +43,15 @@ function TreeNode:makeLevel(key, sums)
     else
         if sums then
             self:addSums(sums)
-        else
-            sums = {}
-            for i = 1, #self.sums do
-                sums[i] = 0
+            for i = 1, #sums do -- may be useless if one just doesn't call the function with
+                local x = self.sums[i]
+                self.sums[i] = (x ~= 0) and x or nil
             end
+        else
+            -- for i = 1, #self.sums do
+            --     sums[i] = 0
+            -- end
+            sums = {}
         end
 
         local out = setmetatable({sums = sums, parent = self, key = key}, TreeNode)
@@ -55,8 +61,9 @@ function TreeNode:makeLevel(key, sums)
 end
 
 function TreeNode:addSums(sums)
-    for i = 1, #self.sums do
-        self.sums[i] = self.sums[i] + sums[i]
+    for i = 1, #sums do -- todo: make sure addSums is a sequence
+        local x = (self.sums[i] or 0) + (sums[i] or 0)
+        self.sums[i] = (x ~= 0) and x or nil
     end
     if self.parent then
         self.parent:addSums(sums)
@@ -171,25 +178,48 @@ function TreeNode.ItemTest()
         "d0dafe9210a8d63439010f83cdaf7ffdc27f27022067d78d16aeb3702b925d47"
     ):setInfo(false, 0, 64):makeLevel("1 21", {1, 0, 0})
     Item_root:forceElement(
-        "minecraft:iron_ingot",
+        "minecraft",
+        "iron_ingot",
         0,
         "Iron Ingot",
         "d737e80b34af245d936ea83ff0eed2de4e9426ddc3cab71d1f5818263adeed73"
     ):setInfo(false, 0, 64):makeLevel("1 47", {61, 0, 0})
     Item_root:forceElement(
-        "minecraft:iron_ingot",
+        "minecraft",
+        "iron_ingot",
         0,
         "Iron Ingot",
         "d737e80b34af245d936ea83ff0eed2de4e9426ddc3cab71d1f5818263adeed73"
     ):setInfo(false, 0, 64):makeLevel("1 50", {6, 0, 0})
     Item_root:forceElement(
-        "minecraft:iron_ingot",
+        "minecraft",
+        "iron_ingot",
         0,
         "Iron Ingot",
         "d737e80b34af245d936ea83ff0eed2de4e9426ddc3cab71d1f5818263adeed73"
     ):setInfo(false, 0, 64):makeLevel("1 52", {47, 0, 0})
 
     return Case == Case2, Case, Item_root
+end
+
+---comment
+---@param indent string
+---@param indentAdd string
+---@return string
+function TreeNode:show(indent, indentAdd)
+    indent = indent or "\t"
+    indentAdd = indentAdd or "  "
+    local sums = table.concat(self.sums, " ")
+    local outhead =
+        sums .. indent .. tostring(self.key) .. "    " .. table.concat(Helper.map(self.extra or {}, tostring), "|")
+    local outtable = {}
+    local nextIndent = indent .. indentAdd
+    if self.children then
+        for key, value in pairs(self.children) do
+            outtable[#outtable + 1] = value:show(nextIndent, indentAdd)
+        end
+    end
+    return outhead .. (outtable[1] and ("\n" .. table.concat(outtable, "\n")) or "")
 end
 
 return TreeNode

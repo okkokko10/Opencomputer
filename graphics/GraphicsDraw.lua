@@ -235,7 +235,7 @@ function GraphicsDraw.printBrackets(text, colors, start, background_mult, doNewL
     local originalBackground = term.gpu().getBackground()
     local opening = "%[%(%{"
     local closing = "%]%)%}"
-    local brackets = "()([" .. opening .. closing .. "])()"
+    local brackets = "()([" .. opening .. closing .. "\n])()"
     background_mult = background_mult or 0.5
 
     local function setBackground(ind)
@@ -288,18 +288,23 @@ function GraphicsDraw.printBrackets(text, colors, start, background_mult, doNewL
         updateColor()
         term.write(string.sub(text, i, bracket_index - 1))
         if bracket then
-            local wentDown = updateColor(bracket)
-            if doNewLine and wentDown then
+            if bracket == "\n" then
                 baseBackground()
                 term.write("\n" .. string.rep(" ", color_index))
-            end
-            if wentDown then
-                wentDown()
-            end
-            term.write(bracket)
-            if doNewLine and not wentDown then
-                baseBackground()
-                term.write("\n" .. string.rep(" ", color_index))
+            else
+                local wentDown = updateColor(bracket)
+                if doNewLine and wentDown then
+                    baseBackground()
+                    term.write("\n" .. string.rep(" ", color_index))
+                end
+                if wentDown then
+                    wentDown()
+                end
+                term.write(bracket)
+                if doNewLine and not wentDown then
+                    baseBackground()
+                    term.write("\n" .. string.rep(" ", color_index))
+                end
             end
         end
         i = next_index

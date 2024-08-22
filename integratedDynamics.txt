@@ -1,0 +1,201 @@
+
+ decodeChar = apply(flip(index of _ _),allChars) : char => number
+  c => index_of(c,allChars)
+  flip(index of)
+
+{pages:["abcde
+1234
+
+ww
+
+123456 aaaaaaaa 2 www 3 eee 4 \",","as
+w\"."]}
+
+{_type:"valuetype",typeName:"valuetype.valuetypes.integrateddynamics.operator.name",_id:37,value:"combined.pipe:{operators:[\"operator.operators.integrateddynamics.string.concat.name\",\"operator.operators.integrateddynamics.string.concat.name\"]}"}
+
+regex for splitting books
+  (?<!\\)","|\{pages:\["|(?<!\\)"\]\} -- not supported.
+ ","|^\{pages:\["|"\]\}$
+  
+split book = split_on_regex(book split regex, chest book nbt string)
+
+
+
+syntax
+```
+  I.n -- n'th input to the code -- redundant since the book should return an operator?
+  N.n -- n'th value of page N
+  #n -- n'th value of this page
+  string X -- string constant X -- how to allow "--" comments?
+  operator split_on_regex 
+  apply N.n M.m
+  4: -- without spaces, ignored like a comment
+```
+
+```
+0: string ","|^\{pages:\["|"\]\}$
+1: operator split_on_regex
+2: apply #1 #0
+
+```
+
+book code parser
+
+  ```
+  toLines = apply( split_on, "\n" ) : string=>List(string)
+  toWords = apply( split_on, " " ) : string "line"=>List(string "word")
+
+  getOperator(word):operator =
+    op_by_name("operator.operators.integrateddynamics." + word + ".name")
+
+  getStateValue(state,word):any =
+    if matches_regex("\d*",word) then
+      get(state,parse_Integer(word)) -- simple version
+    else
+      getOperator(word)
+    end
+  
+  error(any) = increment(not(any))
+
+  parseNew: List(any) "state", List(string) "words" => any "new value" -- this is appended
+  parseNew(state,words):any = 
+    if (head(words) == "string") then 
+      join(" ", tail(words)) 
+    else 
+      reduce1(apply,map(getStateValue(state, _),words))
+      reduce( ( getStateValue.(flip(pipe)(flip(apply))) )(state),words,identity)
+      reduce( X(state),words,identity)
+      pipe(((X.reduce)(state)),flip(apply)(identity))  (words)
+    end
+  
+  parseAppend(state,line):List(any) =
+    append(state,parseNew(state,toWords(line)))
+  
+  parseAll(lines) = 
+    reduce(parseAppend,lines,emptyList)
+  
+  parseText(text) =
+    parseAll(toLines(text))
+
+  ```
+
+
+
+```
+
+
+  toLines = apply( split_on, "\n" ) : string=>List(string)
+  toWords = apply( split_on, " " ) : string "line"=>List(string "word")
+
+  getOperator(word):operator =
+    apply(concat,"operator.operators.integrateddynamics.") _
+     .apply(flip(concat),".name") _
+      .op_by_name _
+
+  getStateValue(word)(state):any =
+    .2 apply(matches_regex,"^\d*$") _
+        .choice(parse_Integer.flip(get) _ _ , getOperator.constant _ _ ) -- todo: does not work. should pipe to first 
+       id
+     : apply
+
+  
+  error(any) = increment(not(any))
+   not.increment
+
+  parseNew: List(any) "state", List(string) "words" => any "new value" -- this is appended
+  parseNew(words)(state):any = 
+    .2 head.apply(eq,"string")
+        .choice(
+          tail.apply(join," ").constant _ _ , -- takes words, then state
+              
+              Y=flip(getStateValue) -- (state)->word->any
+              func(y)(words) =
+                w=map(y) _ -- words->List(any)
+                x=w (words) -- List(any)
+                reduce1(apply,x) -- any
+              (state.Y.func)(words)
+
+              Y=flip(getStateValue) -- (state)->word->any
+              func(y)(words) =
+                w=apply(map,y) _ -- words->List(any)
+                pipe.apply(flip(apply), apply(reduce1,apply)) (w)   (words) -- any
+
+                map.(pipe.apply(flip(apply), apply(reduce1,apply))) (y)   (words) -- any
+              (_state.Y.func)(words)
+              ((flip(getStateValue)).(map.(pipe.apply(flip(apply), apply(reduce1,apply))))) (state)(words)
+          flip((flip(getStateValue)).(map.(pipe.apply(flip(apply), apply(reduce1,apply))))) -- words, state
+        )
+       id
+     : apply
+  
+  
+  parseAppend(state,line):List(any) =
+    line,state->
+    (toWords.parseNew 'line->state->any).pipe
+      apply(append, state)
+
+    
+    append(state,(toWords.parseNew)(line)(state))
+    append(state,flip(toWords.parseNew)(state)(line))
+    append(state,flip(toWords.parseNew)(state)(line))
+    append(state,(toWords.parseNew)(line)(state))
+        pipe(((toWords.parseNew)(line)),apply(append,state))  (state)
+    pipe2(identity,(toWords.parseNew)(line) _ ,append) (state)
+    ((toWords.parseNew).apply(pipe2,identity)).(flip(apply)(append)) (line) (state)
+    
+    flip(((toWords.parseNew).apply(pipe2,identity)).(flip(apply)(append))) (state) (line)
+    
+  
+  parseAll(lines,oldState) = 
+    apply(reduce,parseAppend)
+  
+  parseText(text,oldState) =
+    toLines.parseAll
+
+
+
+```
+
+reorder any inputs
+```
+  A(X,Y,Z)
+  flip(A)(Y,X,Z)
+  apply(flip(A),Y) (X,Z)
+  flip(apply(flip(A),Y)) (Z,X)
+
+  apply(foo,bar(x)) =
+    pipe(bar,foo) (x)
+
+  how to get (x+y)+z
+    concat . concat (x) (y) (z)
+    concat(concat(x)) (y) (z) -- won't work
+
+    concat1(concat2(x,y),z)
+    concat1(concat2(x,y))   (z)
+    concat1( concat2(x)(y) )   (z)
+    pipe(concat2(x),concat1)   (y)   (z)
+    flip(pipe)(concat1,concat2(x))   (y)   (z)
+    flip(pipe)(concat1)(concat2(x))   (y)   (z)
+    apply(flip(pipe)(concat1),concat2(x))   (y)   (z)
+    pipe(concat2,flip(pipe)(concat1))  (x)   (y)   (z)
+    -- ^ answer
+    
+    higher-order function to do that to arbitrary functions:
+    
+    f1(f2(x)(y),z) =
+      pipe(f2,flip(pipe)(f1)) (x)(y)(z)
+    
+    pipe(concat2,flip(pipe)(concat1))
+    [flip(pipe)](flip(pipe)(concat1),concat2)
+      f1(f2(x)(y),z)
+      f1 = flip(pipe), f2 = flip, x = pipe, y = concat1, z = concat2
+
+
+
+
+```
+
+
+
+
+
