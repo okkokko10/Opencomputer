@@ -156,46 +156,410 @@ book code parser
 
 ```
 
-reorder any inputs
-```
-  A(X,Y,Z)
-  flip(A)(Y,X,Z)
-  apply(flip(A),Y) (X,Z)
-  flip(apply(flip(A),Y)) (Z,X)
 
   apply(foo,bar(x)) =
+  foo(bar(x)) =
     pipe(bar,foo) (x)
 
   how to get (x+y)+z
     concat . concat (x) (y) (z)
     concat(concat(x)) (y) (z) -- won't work
 
-    concat1(concat2(x,y),z)
-    concat1(concat2(x,y))   (z)
-    concat1( concat2(x)(y) )   (z)
-    pipe(concat2(x),concat1)   (y)   (z)
-    flip(pipe)(concat1,concat2(x))   (y)   (z)
-    flip(pipe)(concat1)(concat2(x))   (y)   (z)
-    apply(flip(pipe)(concat1),concat2(x))   (y)   (z)
-    pipe(concat2,flip(pipe)(concat1))  (x)   (y)   (z)
+    concat2(concat1(x,y),z)
+    concat2(concat1(x,y))   (z)
+    concat2( concat1(x)(y) )   (z)
+    pipe(concat1(x),concat2)   (y)   (z)
+    flip(pipe)(concat2,concat1(x))   (y)   (z)
+    flip(pipe)(concat2)(concat1(x))   (y)   (z)
+    apply(flip(pipe)(concat2),concat1(x))   (y)   (z)
+    pipe(concat1,flip(pipe)(concat2))  (x)   (y)   (z)
     -- ^ answer
     
     higher-order function to do that to arbitrary functions:
     
-    f1(f2(x)(y),z) =
-      pipe(f2,flip(pipe)(f1)) (x)(y)(z)
+    f2(f1(x)(y),z) =
+      pipe(f1,flip(pipe)(f2)) (x)(y)(z)
     
-    pipe(concat2,flip(pipe)(concat1))
-    [flip(pipe)](flip(pipe)(concat1),concat2)
-      f1(f2(x)(y),z)
-      f1 = flip(pipe), f2 = flip, x = pipe, y = concat1, z = concat2
+    pipe(concat1,flip(pipe)(concat2))
+    [flip(pipe)](flip(pipe)(concat2),concat1)
+      f2(f1(x)(y),z)
+        f2 = flip(pipe), f1 = flip, x = pipe, y = concat2, z = concat1
+      pipe(flip,flip(pipe)(flip(pipe))) (pipe) (concat2)(concat1)
+    
 
+    ##flip_twoPipe
+    flip_twoPipe := pipe(flip,flip(pipe)(flip(pipe)))(pipe)
+                  (flip(pipe)(flip(pipe)))(flip(pipe))
+                  flip(pipe)(flip(pipe))(flip(pipe)) -- flip can be removed
+                  pipe (flip(pipe)) (flip(pipe))
+
+    flip_twoPipe(f2,f1) (x,y) = f2(f1(x,y))
+
+
+
+```
+
+flip_twoPipe(string_concat,string_concat) materialized:
+{
+    _type:"valuetype",
+    typeName:"valuetype.valuetypes.integrateddynamics.operator.name",
+    _id:100,
+    value:"combined.pipe:{
+        operators:[
+            \"operator.operators.integrateddynamics.string.concat.name\",
+            \"curry:{
+                values:[
+                    {
+                        valueType:\\\"valuetype.valuetypes.integrateddynamics.operator.name\\\",
+                        value:\\\"operator.operators.integrateddynamics.string.concat.name\\\"
+                    }
+                ],
+                baseOperator:\\\"combined.flip:{
+                    operators:[
+                        \\\\\\\"operator.operators.integrateddynamics.operator.pipe.name\\\\\\\"
+                    ]
+                }\\\"
+            }\"
+        ]
+    }"
+}
+
+
+more pipe
+```
+    deeper:
+        f3(f2(f1(x,y)))
+        f3(flip_twoPipe(f2,f1) (x,y))
+        flip_twoPipe(f3,flip_twoPipe(f2,f1))    (x,y)
+        twoPipe(flip_twoPipe(f2,f1),f3)    (x,y)
+        twoPipe(flip_twoPipe(f2,f1))  (f3)    (x,y)
+        flip_twoPipe(twoPipe,flip_twoPipe)(f2,f1)  (f3)    (x,y)
+        flip_twoPipe(twoPipe,twoPipe) (f1,f2)  (f3)    (x,y)
+    
+    wider:
+        threePipe = 
+        f2(f1(x,y,z))
+        f2(f1(x)(y,z))
+        flip_twoPipe(f2,f1(x))                         (y,z)
+        pipe(f1,flip_twoPipe(f2))                 (x)  (y,z)
+        pipe(pipe,pipe(flip_twoPipe))   (f1) (f2) (x)  (y,z)
+        
+        pipe(pipe)(pipe(flip_twoPipe))  (f1) (f2) (x)  (y,z)
+        pipe(pipe,pipe(pipe)) (flip_twoPipe)  (f1) (f2) (x)  (y,z)
+
+    huh, 
+        pipe(pipe,pipe(pipe)) 
+        pipe(pipe,pipe(pipe)) (pipe)
+        pipe(pipe,pipe(pipe)) (pipe) ... (pipe)
+        are equivalent
+        WW(F) (f1,y,x) =
+        F(y,f1(x))
+        flip(F)(f1(x))(y)
+        pipe(f1,F(y))(x)
+        y + -x
+            
+    
+```
+
+```
+    F(x,y,z)
+    F           (x)(y)(z)
+        flip(F)     (y)(x)(z)
+    F           (x)(y)(z)
+    
+    --not equality
+    pipe(apply,apply) (F) (x)(y)(z) 
+    apply(apply(F)) (x)(y)(z)
+    (apply(F)(x)) (y)(z)
+
+    pipe(flip(apply),flip(apply)) F x y z
+    flip(apply)(flip(apply)(F)) x y z
+    x (flip(apply)(F))  y z
+    
+    apply2(_, x, y)
+    (_)(x, y)
+    F (x, y)
+    flip(apply) x F y
+    flip(flip(apply) x)     y F
+    ##     param2: encloses 2 parameters for a function 
+    param2 = pipe(flip(apply),flip)  x y F
+
+    F x y z
+    flip(F) y x z
+    flip(flip(F) y) z x
+    ## 
+    pipe(flip(F),flip) y z x
+    flip(pipe)(flip)(flip(F)) y z x
+    ##
+    pipe(flip,flip(pipe)(flip)) F y z x
+    shift_yz = pipe(flip,flip_yz)
+    
+    shift_z = pipe(flip_yz,flip)
+ 
+    flip_yz =   flip(pipe)(flip)
+                pipe(flip,shift_yz) 
+    shift_yz = pipe(flip,flip_yz)
+    flip_xz = pipe(shift_yz,flip)
+
+
+    F                       x y z = F x y z -- base
+                            x y z
+    shift_yz F              x y z = F z x y -- z is applied as first parameter
+                            y z x -- apply x later
+    flip_yz F               x y z = F x z y -- flip yz
+                            x z y
+    shift_z F               x y z = F y z x 
+                            z x y   -- apply z first
+    flip_xz F               x y z = F z y x -- reverse all three; flip xz
+                            z y x
+    flip F                  x y z = F y x z -- flip xy
+                            y x z
+
+    other possible names:
+    shift_z: apply_z, apply_Zxy,    apply_312
+    shift_yz: apply_yz, apply_YZx,  apply_231
+    flip_yz: apply_xZY, flip_23,    apply_132
+    flip_xz: flip_13,               apply_321
+    
+    ##
+    -- note: flip here is actually force_flip, pipe(apply2,flip)
+    -- this is so X -> (Y -> Z) is actually recognized as X -> Y -> Z
+    
+    
+    shift_yz(shift_yz(shift_yz(F))) = F -- identity. shift_yz is a "three-involution (how to call it)"
+
+
+
+
+
+    ##
+    apply(F) = F
+    ##
+    pipe(F,apply) = F
+
+
+
+    -- capture x y z in parameters, then take w
+
+    capture x y
+    apply_yz(apply2) x y F = F x y
+    param2 = pipe(flip(apply),flip)  x y F
+ 
+    param2 x y F = F x y
+    
+    param3 x y  z F = F x y z
+    param3(x,y) z F
+    
+    addParam:
+        P(F) = (F x y)
+        add(P,z) F = (F x y) z
+        add(P,z) F = P(F) z
+        flip_23(add)(P,F,z) = apply2(P,F,z)
+        flip_23(add) = apply2
+        addParam 
+            = flip_23(apply2)
+            = flip(pipe)(flip)(apply2)
+            = pipe(apply2,flip)
+
+    param3(x,y,z) = addParam(param2(x,y)) z
+    param3 = flip_twoPipe(addParam,param2) x y z
+
+    
+
+generalize if cond(x) then foo(x) else bar(x)
+    IF (cond, then, else) (x)
+    pipe2(
+        pipe(
+            cond, 
+            apply_yz(choice)(then,else)
+        ),id,apply)
+    pipe2(pipe(cond,apply_yz(choice)(then,else)),id,apply)
+    apply_yz(pipe2)(id,apply) pipe(cond,apply_yz(choice)(then,else))
+    apply_yz(pipe2)(id,apply) (flip(pipe)(apply_yz(choice)(then,else),cond))
+    apply_yz(pipe2)(id,apply) (flip(pipe)(apply_yz(choice)(then,else))   (cond))
+    apply_yz(pipe2)(id,apply) (flip_twoPipe(flip(pipe),apply_yz(choice)) (then, else, cond))
+    threePipe(flip_twoPipe(flip(pipe),apply_yz(choice)),apply_yz(pipe2)(id,apply))      (then, else, cond)
+    
+    IF(then, else, cond) (x) =
+        threePipe(flip_twoPipe(flip(pipe),apply_yz(choice)),apply_yz(pipe2)(id,apply))      (then, else, cond)
+
+
+unforced apply_twice(F,x) = F(x,x)
+    pipe2(id,id) F x
+
+apply_twice =pipe(apply2,pipe2(id,id))
 
 
 
 ```
 
 
+book code parser, second try compiling
+
+  ```
+  toLines = apply( split_on, "\n" ) : string=>List(string)
+  toWords = apply( split_on, " " ) : string "line"=>List(string "word")
+
+  getOperator(word):operator =
+    op_by_name("operator.operators.integrateddynamics." + word + ".name")
+
+
+  getStateValue(state,word):any =
+    if matches_regex("\d*",word) then
+      get(state,parse_Integer(word)) -- simple version
+    else
+      getOperator(word)
+    end
+  
+  error(any) = increment(not(any))
+
+  parseNew: List(any) "state", List(string) "words" => any "new value" -- this is appended
+  parseNew(state,words):any = 
+    if (head(words) == "string") then 
+      join(" ", tail(words)) 
+    else 
+      reduce1(apply,map(getStateValue(state, _),words))
+      reduce( ( getStateValue.(flip(pipe)(flip(apply))) )(state),words,identity)
+      reduce( X(state),words,identity)
+      pipe(((X.reduce)(state)),flip(apply)(identity))  (words)
+    end
+  
+  parseAppend(state,line):List(any) =
+    append(state,parseNew(state,toWords(line)))
+  
+  parseAll(lines) = 
+    reduce(parseAppend,lines,emptyList)
+  
+  parseText(text) =
+    parseAll(toLines(text))
+
+  ```
+
+
+```
+
+
+  toLines = apply( split_on, "\n" ) : string=>List(string)
+  toWords = apply( split_on, " " ) : string "line"=>List(string "word")
+
+  getOperator(word):operator =
+    apply(concat,"operator.operators.integrateddynamics.") _
+     .apply(flip(concat),".name") _
+      .op_by_name _
+  --works
+
+  getStateValue(word)(state):any =  -- both cases are operational.
+    pipe2(
+        pipe(
+            apply(matches_regex,"^\d*$") _,
+            apply_yz(choice)(pipe(parse_Integer,flip(get) _ _), getOperator.constant _ _ )
+        ),
+        id,
+        apply
+    )
+
+  
+  error(any) = increment(not(any))
+   not.increment
+
+  parseNew(words,state)  -- works.
+        if (head(words) == "string") then 
+            join(" ", tail(words)) 
+        else 
+            reduce1(apply,map(getStateValue(state, _),words))
+            reduce(apply,map(getStateValue(state, _),words),identity)
+            reduce(apply(a, getStateValue(state, w)),words,identity)
+
+                apply(a, getStateValue(state, w))
+                X(state) (a) (w)
+                flip(apply)(getStateValue(state, w))    (a)
+                flip_twoPipe(flip(apply),getStateValue) (state, w)    (a)
+            
+                applyValue = flip_yz(flip_twoPipe(flip(apply),getStateValue))    -(state)(a)(w)
+            reduce(applyValue(state),words,identity)
+            apply_z(reduce)(identity)(applyValue(state),words)
+            (apply_z(reduce)(identity))(applyValue(state))    (words)
+            pipe(applyValue,apply_z(reduce)(identity)) (state)    (words)
+            
+            applyValue = flip_yz(flip_twoPipe(flip(apply),getStateValue))    -(state)(a)(w)
+            NewValue = flip(pipe(applyValue,apply_z(reduce)(identity)))    (words) (state)
+
+
+            other try:
+            NewValue =
+                reduce(apply,map(getStateValue(_, state),words),identity)
+                flip_twoPipe(apply_z(reduce)(identity,apply),map) (getStateValue(_,state))  (words)
+                flip(pipe(flip(getStateValue),flip_twoPipe(apply_z(reduce)(identity,apply),map)))   (words) (state)
+            
+
+        
+        
+        pipe2(
+            pipe(
+                pipe(head,apply(eq,"string")) _,
+                apply_yz(choice)(
+                    THEN _ _
+                    pipe(tail,join(" ")).constant 
+                    , 
+                    ELSE _ _
+                    NewValue
+                )
+            ),
+            id,
+            apply
+        )
+
+  
+  
+  parseAppend(state,line):List(any) =
+    append(state,parseNew(state,toWords(line)))
+
+    flip(append)(parseNew(state,toWords(line))) (state)
+    pipe(toWords,flip(flip_twoPipe(flip(append),parseNew))) (line) (state,state)
+    X (line) (state,state)
+    apply_twice(X(line)) (state)
+    pipe(X,apply_twice) (line) (state)
+    flip(pipe(X,apply_twice)) (state) (line) 
+    
+    X = pipe(toWords,flip(flip_twoPipe(flip(append),parseNew)))     (line)(state)(state)
+    parseAppend = flip(pipe(X,apply_twice))         (state,line)
+
+
+    --another try
+    append(state,parseNew(state,toWords(line)))
+    (flip(append)(parseNew(state,toWords(line)))) (state)
+    (flip_twoPipe(flip(append),parseNew)(state,toWords(line))) (state)
+    flip_twoPipe(flip(append),parseNew)     (state) (toWords(line)) (state)
+    flip(flip_twoPipe(flip(append),parseNew))      (toWords(line))  (state)(state)
+    pipe(toWords,flip(flip_twoPipe(flip(append),parseNew)))      (line)  (state)(state)
+    pipe(toWords,flip(flip_twoPipe(flip(append),parseNew)))      (line)  (state)(state)
+
+    -- X works.
+
+    X (line) (state)(state)
+    apply_twice(X(line)) (state)
+    pipe(X,apply_twice) (line)(state)
 
 
 
+  
+  parseAll(lines,oldState) = 
+    apply(reduce,parseAppend)
+  
+  parseText(text,oldState) =
+    toLines.parseAll
+
+    ##
+    --whole thing works now. except writing "parse.parse_Integer" for some reason evaluates to false.
+
+  newList(first) =
+    append(List)
+
+  parsePages(pages,oldState)
+    parseText(page2,newList(parseText(page1,newList(oldState))))
+    parseText(page,newList( state ))
+
+
+operator.operators.integrateddynamics.parse.parse_Integer.name
+operator.operators.integrateddynamics.parse.valuetype.valuetypes.integrateddynamics.integer.name
+```
