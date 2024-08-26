@@ -63,7 +63,7 @@ end
 ---adds added to target in place.
 ---@param target number[]
 ---@param added number[]
-local function sumAdd(target, added)
+function TreeNode.sumAdd(target, added)
     for i = 1, #added do -- todo: make sure addSums is a sequence
         local x = (target[i] or 0) + (added[i] or 0)
         target[i] = (x ~= 0) and x or nil
@@ -71,7 +71,7 @@ local function sumAdd(target, added)
 end
 
 function TreeNode:addSums(sums)
-    sumAdd(self.sums, sums)
+    TreeNode.sumAdd(self.sums, sums)
     if self.parent then
         self.parent:addSums(sums)
     end
@@ -256,7 +256,7 @@ end
 ---@return TreeNodeView
 function TreeNode:makeChangedView()
     ---@type TreeNodeView
-    return setmetatable({real = self}, TreeNode)
+    return setmetatable({real = self}, {__index = self})
 end
 
 function TreeNode:representation()
@@ -264,6 +264,7 @@ function TreeNode:representation()
 end
 
 function TreeNode:matchesKey(key)
+    -- string.match(tostring(self.key),key)
     return key == "%" or self.key == key
 end
 
@@ -289,13 +290,17 @@ function TreeNode:matchingRecursive(key, nextKey, ...)
                 if newChild then
                     newChildren[k] = newChild
                     newChild.parent = copy
-                    sumAdd(sums, newChild.sums)
+                    TreeNode.sumAdd(sums, newChild.sums)
                 end
             end
         else
-            sumAdd(sums, self.sums)
+            TreeNode.sumAdd(sums, self.sums)
         end
-        return copy
+        if next(sums) or next(newChildren) then -- next works as 'check nonempty'
+            return copy
+        else
+            return nil
+        end
     else
         return nil
     end

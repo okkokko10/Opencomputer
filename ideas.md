@@ -459,3 +459,5 @@ TreeNode item
 
   each layer should have its own metatable?
 
+  items:matchingRecursive("%","%","%","%","%","%","1 52")
+  -- gets the item in the slot "1 52"
