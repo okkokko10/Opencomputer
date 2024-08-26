@@ -5,9 +5,9 @@ local Helper = require "Helper"
 ---@class TreeNode
 ---@field parent TreeNode|nil
 ---@field key any
----@field children table<any,TreeNode>
+---@field children table<any,TreeNode>?
 ---@field sums number[]
----@field extra table
+---@field extra table?
 local TreeNode = {}
 
 TreeNode.__index = TreeNode
@@ -60,27 +60,44 @@ function TreeNode:makeLevel(key, sums)
     end
 end
 
-function TreeNode:addSums(sums)
-    for i = 1, #sums do -- todo: make sure addSums is a sequence
-        local x = (self.sums[i] or 0) + (sums[i] or 0)
-        self.sums[i] = (x ~= 0) and x or nil
+---adds added to target in place.
+---@param target number[]
+---@param added number[]
+local function sumAdd(target, added)
+    for i = 1, #added do -- todo: make sure addSums is a sequence
+        local x = (target[i] or 0) + (added[i] or 0)
+        target[i] = (x ~= 0) and x or nil
     end
+end
+
+function TreeNode:addSums(sums)
+    sumAdd(self.sums, sums)
     if self.parent then
         self.parent:addSums(sums)
     end
     return self
 end
 
----the path of this tree node
+---the path of this tree node, reversed.
 ---@return table
-function TreeNode:path()
+function TreeNode:pathReverse()
     if self.parent then
-        local out = self.parent:path() -- this implementation means this cannot be memoized. and it shouldn't be.
+        local out = self.parent:pathReverse() -- this implementation means this cannot be memoized. and it shouldn't be.
         out[#out + 1] = self.key
         return out
     else
         return {}
     end
+end
+---the path of this tree node
+---@return table
+function TreeNode:path()
+    local out = {}
+    local pathReverse = self:pathReverse()
+    for i = #pathReverse, 1, -1 do
+        out[#out + 1] = pathReverse[i]
+    end
+    return out
 end
 
 ---returns an element in the tree with the key
@@ -220,6 +237,68 @@ function TreeNode:show(indent, indentAdd)
         end
     end
     return outhead .. (outtable[1] and ("\n" .. table.concat(outtable, "\n")) or "")
+end
+
+---@class TreeNodeView: TreeNode
+---@field real TreeNode
+---@field parent TreeNodeView?
+---@field key any
+---@field children table<any,TreeNodeView>?
+---@field sums number[]
+
+---a view that is supposed to be like this one
+---@return TreeNodeView
+function TreeNode:makeView()
+    ---@type TreeNodeView
+    return setmetatable({real = self}, {__index = self})
+end
+---comment
+---@return TreeNodeView
+function TreeNode:makeChangedView()
+    ---@type TreeNodeView
+    return setmetatable({real = self}, TreeNode)
+end
+
+function TreeNode:representation()
+    return self:path()
+end
+
+function TreeNode:matchesKey(key)
+    return key == "%" or self.key == key
+end
+
+---comment
+---arguments are treated as a sequence (arguments after the first nil are ignored)
+---@param key any
+---@param nextKey any
+---@param ... unknown
+---@return TreeNodeView?
+function TreeNode:matchingRecursive(key, nextKey, ...)
+    if self:matchesKey(key) then
+        if not nextKey then -- matching ends
+            return self:makeView()
+        end
+        local copy = self:makeChangedView()
+        local sums = {}
+        local newChildren = {}
+        copy.children = newChildren
+        copy.sums = sums
+        if self.children then
+            for k, child in pairs(self.children) do
+                local newChild = child:matchingRecursive(nextKey, ...)
+                if newChild then
+                    newChildren[k] = newChild
+                    newChild.parent = copy
+                    sumAdd(sums, newChild.sums)
+                end
+            end
+        else
+            sumAdd(sums, self.sums)
+        end
+        return copy
+    else
+        return nil
+    end
 end
 
 return TreeNode

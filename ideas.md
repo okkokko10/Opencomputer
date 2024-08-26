@@ -216,6 +216,7 @@ todo: Story, an async coroutine with phases
 
 poll Integrated Dynamics on the shape of shaped crafting recipes
 
+# TreeNode Items
 New data structure for item storage:
 ```
 
@@ -441,3 +442,20 @@ faster placing items in crafty crates with integrated dynamics.
 integrated dynamics 
  parse sign text
  can IntDyn be programmed with text using reduce on a list of operators gotten from a string?
+
+
+TreeNode item
+  needed uses:
+    in recipes
+    general virtual itemstack
+    item with a slot in a recipe
+    fuzzy, but with a slot in a recipe
+
+  other representations
+  Item("minecraft","name",0)
+  Item(nil,"name") -- matches all with name "name"
+
+  function "matching", which gets all items in a node that match a representation
+
+  each layer should have its own metatable?
+
