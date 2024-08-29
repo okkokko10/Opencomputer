@@ -461,3 +461,164 @@ TreeNode item
 
   items:matchingRecursive("%","%","%","%","%","%","1 52")
   -- gets the item in the slot "1 52"
+
+
+TreeNodeClass
+  items, mod, name, meta, label, hash, pos
+
+How to represent recipes?
+
+```
+recipe
+  0 -- recipe id
+    "inputs" -- todo: a TreeNode structure that has attributes as children, which are different types of TreeNode?
+      "minecraft"
+        "wood_planks": 6
+          "%"
+            "%"
+              "%": 6
+                "cr 0": 1
+                "cr 2": 1
+                "cr 3": 1
+                "cr 4": 1
+                "cr 5": 1
+                "cr 7": 1
+        "iron_ingot": 1
+          "%"
+            "%"
+              "%": 1
+                "cr 1": 1
+    "station"
+      "crafting": 1
+    "outputs"
+      "minecraft"
+        "shield": 1
+          "%", "%", "%", "cr out" : 1
+  1
+    "station"
+      "runicaltar": 1
+    "inputs"
+      "botania"
+        "rune"
+          "?"
+            "Rune of Water"
+              "%"
+                "al": 1
+            "Rune of Fire"
+              "%"
+                "al": 1
+
+
+craftables
+  "minecraft"
+    "shield"
+      "%"
+        "%"
+          "%"
+            recipe.0
+
+
+Items:
+  (item mod...hash), pos  : sums
+
+Recipes:
+  Recipes_inputs:
+    recipeID, (item mod...hash), recipePos : amount
+  Recipes_station:
+    recipeID, station
+  Recipes_outputs:
+    recipeID, (item mod...hash), recipePos : amount
+
+Craftables:
+  (item mod...hash), recipeID_FK
+```
+
+
+
+
+idea: "free mode", where changes to stored items won't be saved and crafting requests won't be sent out, and you can add ites freely, and recipes complete instantly. at the end, tracks what you have done, and makes a to-do list of it.
+
+todo: writing "?" in a place like "%", will be replaced with the first value that fits, permanently.
+    for example, writing in a recipe ("botania", "rune", "?", "Rune of Water"), the first time a rune labeled "Rune of Water" appears, the "?" in the recipe data is replaced with the appropriate value.
+    -What happens when different items have a common "?" root?
+  other special characters:
+    one that means it is unknown, but does not make the category fuzzy
+
+list of items should be separate from the storage system?
+each node is referenced in a table containing sums?
+
+adding ("silents","sword","&","&","&") creates a fuzzy branch.
+todo: adding ("silents", "sword", "&", "%", "&") makes meta and hash fuzzy, but not label?
+
+todo: make branch fuzzy afterwards.
+
+
+Item(mod ... hash) : extra
+
+Storage:
+  Item, pos : sums
+
+
+
+Items up to "label" should be stored in one file / in cache, and hashes and positions in another, each on their own line. those need only be accessed when moving items.
+
+
+File structure:
+
+
+A:
+
+root-mod: 
+  "minecraft": 0 (10,5,0), "botania": 1
+
+mod-name:
+  0-  "stone": 0, "planks": 1, "diamond_sword": 4
+  1-  "rune": 2, "manaresource": 3
+
+name-meta:
+  0-  0: 0
+  1-  0: 1
+  2-  0: 2, 1: 3, 4: 4
+  3-  2: 5
+  4:  0: 6, "d": 7
+
+meta-label:
+  0-  "Stone": 0
+  1-  "Oak Planks": 1
+  2-  "Rune of Water": 2
+  3-  "Rune of Fire": 3
+  4-  "Rune of Spring": 4
+  5-  "Mana Diamond": 5
+  6-  "Diamond Sword": 6, "New Sword": 8
+  7-  "Diamond Sword": 7, "Old Sword": 9
+
+label-hash:
+  0- "abcd": 0
+  1- "abcd": 1
+  2- "abcd": 2 
+  3- "abcd": 3
+  4- "abcd": 4
+  5- "abcd": 5
+  6- "efgh": 6, "xxxx": 10
+  7- "efgh": 7
+  8- "efgh": 8, "yxaw": 11
+  9- "efgh": 9
+
+hash-pos:
+  0- "1 20": {20,1}
+
+
+
+
+
+
+0 "botania"
+1 "rune"
+2 "0"
+3 "Rune of Water"
+2 "1"
+3 "Rune of Fire"
+
+
+
+Item("botania","rune",0): 1

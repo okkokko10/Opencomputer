@@ -115,16 +115,21 @@ end
 
 
 function printTables(tbl,ignoreKeys, out, done, indent,key)
-    done = done or {}
-    indent = indent or ""
-    if out then
-        out[#out+1] = indent..tostring(key) .. "\t" .. tostring(tbl)
-    else 
-        print(indent,key,tbl)
-    end
     if ignoreKeys and ignoreKeys[key] then 
         return 
     end 
+    done = done or {}
+    indent = indent or ""
+    if out then
+        if type(out) == "table" then
+            out[#out+1] = indent..tostring(key) .. "\t" .. tostring(tbl)
+        else
+            out(indent,(key), (tbl))
+        end
+
+    else 
+        print(indent,key,tbl)
+    end
     if type(tbl) == "table" and not done[tbl] then 
         done[tbl] = true
         for k,v in pairs(tbl) do 
@@ -137,3 +142,13 @@ end
 
 function writeMultiline() local lines = {}; while true do local r = term.read({history={}}); if r then lines[#lines+1]=r else break end end; return lines end
 function codeMultiline() return load(table.concat(writeMultiline(),"\n"))() end
+
+
+function xprint(indent,key,tbl) term.write(tostring(key)) end
+
+
+
+w = io.open(lpath,"w"); r = io.open(lpath,"r")
+
+r:seek("set"); w:seek("set")
+for i = 1, 1000 do local inp = r:read(1); if not inp then break end if inp == " " then inp = "\n" end w:write(inp) end

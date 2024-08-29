@@ -330,8 +330,7 @@ function TreeNode:representation() -- todo: add sums
 end
 
 function TreeNode:matchesKey(key)
-    -- string.match(tostring(self.key),key)
-    return key == "%" or self.key == key
+    return key == "%" or self.key == key --or string.match(tostring(self.key), key)
 end
 
 ---comment
@@ -363,7 +362,7 @@ function TreeNode:matchingRecursive(neededSums, key, nextKey, ...)
         else
             TreeNode.sumAdd(sums, self.sums)
         end
-        if next(sums) or next(newChildren) then -- next works as 'check nonempty'
+        if next(sums) or next(newChildren) then -- next works as 'check nonempty'. todo: method
             return copy
         else
             return nil
@@ -379,8 +378,9 @@ end
 
 ---comment
 ---@param parent TreeNode
-function TreeNode:deepCopy(parent)
-    local out = parent:makeChild(Helper.shallowCopy(self.sums), self.key)
+---@param key any?
+function TreeNode:deepCopy(parent, key)
+    local out = parent:makeChild(Helper.shallowCopy(self.sums), key or self.key)
     out.extra = self.extra -- extra should be immutable
     if self.children then
         out.children = {}
@@ -389,6 +389,18 @@ function TreeNode:deepCopy(parent)
         end
     end
     return out
+end
+
+---if the node is fuzzy (child keys are equated), gets the key where the children are.
+---otherwise returns falsey
+---todo: this value is the first value
+---@return string?
+function TreeNode:isFuzzy()
+    if self.children["&"] then
+        return "&"
+    else
+        return nil
+    end
 end
 
 ---add deep copy of otherNode to this.
@@ -400,11 +412,16 @@ function TreeNode:extend(otherNode)
 
     TreeNode.sumAdd(self.sums, otherNode.sums)
     if otherNode.children then
+        if not self.children then
+            self.children = {}
+        end
+        local fuzz = self:isFuzzy()
         for key, value in pairs(otherNode.children) do
+            key = fuzz or key
             if self.children[key] then
                 self.children[key]:extend(value)
             else
-                self.children[key] = value:deepCopy(self)
+                self.children[key] = value:deepCopy(self, key)
             end
         end
     end
