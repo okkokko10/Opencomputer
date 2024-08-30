@@ -147,6 +147,8 @@ function codeMultiline() return load(table.concat(writeMultiline(),"\n"))() end
 function xprint(indent,key,tbl) term.write(tostring(key)) end
 
 
+timer() for i = 1, 1000 do   end;print(timer())
+
 
 w = io.open(lpath,"w"); r = io.open(lpath,"r")
 

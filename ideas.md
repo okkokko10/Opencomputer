@@ -622,3 +622,121 @@ hash-pos:
 
 
 Item("botania","rune",0): 1
+
+
+
+Sql?
+
+
+Idea: the data structure that stores which items are in what slots should have constant size (as long as inventories aren't connected), since it is expected that it will become dense.
+
+Files:
+  Uniques: all unique items. arbitrary data size. delimited by linebreak.
+    accompanied by index = id.
+    designed to be loaded to memory
+    append-only (can be cleaned up, but this requires restructuring)
+  UniqueIndex:
+    constant memory size array.
+    stores starting index of the item string in Uniques.
+    
+  Amounts: (system)
+    constant memory size array.
+    starting at byte i*size is the amount of the item with id=i
+    buffered.
+    only concerns total available amount.
+  
+  
+  -- if it can be given that unique items have ids:
+  ## slotdatabase
+
+  Stored:
+    constant memory size array.
+    because it's designed to be dense, has a constant size, only affected by the number of slots, not how many are filled.
+    (itemID, amount, prevSlot, nextSlot, containerHash)
+    arrayfile.open(lpath,"I3 I4 I3 I3 I1","itemID amount prev next container")
+    containerHash is a 1-byte value that narrows down the container.
+    prevSlot and nextSlot point to the previous and next index in this array that stores this item. 
+      it's a two-way linked list.
+      they aren't necessarily sequential in the array.
+      the top edge is stored for the item, for faster access.
+        it could be that stacks are filled with this in mind.
+      0 means it's the first/last
+      air also has this. (air's itemID is 0)
+    
+      When a slot's item changes:
+        -- note that "next" and "previous" are confusing. top is what doesn't have next.
+        -- mend the connected slots together
+        Stored[self.prevSlot].nextSlot = self.nextSlot
+        if self.nextSlot == 0 then -- means this == itemOut.topSlot
+          itemOut.topSlot = self.prevSlot
+        else
+          Stored[self.nextSlot].prevSlot = self.prevSlot
+        end
+        -- new item in. put it at the top of its linked list
+        self.prevSlot = itemIn.topSlot
+        self.nextSlot = 0
+        Stored[itemIn.topSlot ( == new self.prevSlot) ].nextSlot = this
+        itemIn.topSlot = this
+        -- also the leaving item's total size is affected.
+        self.itemID = itemIn.itemID
+        self.amount = inAmount
+    How should air be linked by default?
+      the air topSlot should be the first index, its prevSlot the second index, and so on.
+      when containers are added to the end of the array, they are full of air.
+      so that newer containers get filled up last, they link to air's bottomSlot.
+    Memory size:
+      itemID 3-byte, amount 4-byte (could be 1-byte as it's usually max 64)
+      next,previous: 3-byte
+      containerHash: 1-byte
+      in total 14-byte
+      4-byte maximum uint is 4G
+      3-byte is 16M. this means the file would be 14*16M = 224MB large if it needed more than 3 bytes for slot pointers
+      One chest takes up 27*14 = 378 bytes.
+      1MB can store 74_000 slots, == 2700 chests
+    
+    Order of values:
+      values that are often updated together should be next to each other.
+      amount and next should be neighbors, since when items are added to it that don't fit in the slot, they are placed in a new slot.
+
+
+  TopSlots:
+    constant memory size array.
+    store edges of Stored linked lists.
+  
+  Containers:
+    must be searched when deciding to move items.
+    should be small.
+    serialized.
+    data:
+      container id
+      container stack multiplier
+      start slot
+      end slot (exclusive?) -- or size
+      Location
+    When moving items, searching containers with containerHash and start/end slot
+    
+  
+
+
+
+
+
+
+In ram:
+    arriving and leaving items are only stored in ram (or a serialized table)
+      they are also just internal values
+    reserved amount, ordered amount (in ram)
+  
+
+
+
+
+
+
+
+
+last time playing DH: 17.7.
+DH unique items: < 19_000
+
+
+Idea: set trash filtered unstackable items to be stored in a specified container without storing what they are
