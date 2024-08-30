@@ -3,20 +3,52 @@ local Helper = require "Helper"
 
 ---@alias entry table
 
+--[[
+```
+public methods:
+    arrayfile.make
+    arrayfile:readEntriesValues
+    arrayfile:writeEntries
+
+
+call tree:
+    readEntriesValues
+        readEntryValues
+            readEntry
+                _read_seek
+                    _read
+                    (read_stream)
+                    (read_index)
+                _read
+                    (read_stream)
+                    (read_index)
+                decode
+    writeEntries
+        writeEntry
+            encode
+            _write_seek
+                (write_stream)
+                (write_index)
+            _write
+                (write_stream)
+                (write_index)
+
+```
+]]
 ---@class arrayfile
----@field read_stream buffer
----@field write_stream buffer
----@field read_index integer
----@field write_index integer
 ---@field filename string
 ---@field nameIndex table<string,integer>
 ---@field nameList string[]
----@field offsets integer[]
----@field size integer
----@field sizes integer[]
 ---@field wholeFormat string
 ---@field formats string[]
+---@field offsets integer[]
+---@field size integer
+---@field sizes integer[] -- currently unused
 ---@field entryMetatable table
+---@field read_stream buffer
+---@field read_index integer
+---@field write_stream buffer
+---@field write_index integer
 local arrayfile = {}
 
 arrayfile.__index = arrayfile
@@ -40,7 +72,12 @@ end
 function arrayfile.make(filename, formats, nameList)
     formats = arrayfile.splitArgString(formats)
     nameList = arrayfile.splitArgString(nameList)
-    local arrf = {filename = filename, formats = formats, nameList = nameList, wholeFormat = table.concat(formats, " ")}
+    ---@type arrayfile
+    local arrf =
+        setmetatable(
+        {filename = filename, formats = formats, nameList = nameList, wholeFormat = table.concat(formats, " ")},
+        arrayfile
+    )
     local nameIndex = {}
     for i = 1, #(nameList or "") do
         nameIndex[nameList[i]] = i
@@ -67,9 +104,12 @@ function arrayfile.make(filename, formats, nameList)
         end
     }
 
-    return setmetatable(arrf, arrayfile)
+    return arrf
 end
 
+---turns bytes into an entry
+---@param data string
+---@return entry entry
 function arrayfile:decode(data)
     return setmetatable({string.unpack(self.wholeFormat, data)}, self.entryMetatable)
 end
@@ -166,14 +206,24 @@ end
 ---proper way to query values.
 --- {[3]="a b c",[5]="d c"} => {[3]={a=?,b=?,c=?},[5]={d=?,c=?}}
 ---@param indices_keys table<integer,string|string[]>
----@return table<integer,entry> entries
+---@return table<integer,entry> indices_entries
 function arrayfile:readEntriesValues(indices_keys)
-    local entries = {}
+    local indices_entries = {}
     table.sort(indices_keys) -- todo: does this work?
     for index, keys in pairs(indices_keys) do
-        entries[index] = self:readEntryValues(index, keys)
+        indices_entries[index] = self:readEntryValues(index, keys)
     end
-    return entries
+    return indices_entries
+end
+
+---writes entries. in a sense updates this with indices_entries.
+---nil keeps old value
+---@param indices_entries table<integer,entry>
+function arrayfile:writeEntries(indices_entries)
+    table.sort(indices_entries) -- todo: does this work?
+    for index, entry in pairs(indices_entries) do
+        self:writeEntry(index, entry)
+    end
 end
 
 ---writes entry to index. if some values are blank, they are left as is
