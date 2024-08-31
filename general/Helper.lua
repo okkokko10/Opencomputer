@@ -160,4 +160,31 @@ function Helper.splitNumber(num, mod, first)
   return out
 end
 
+---gets the indices of the table
+---@param tbl table
+---@return table
+function Helper.indices(tbl)
+  local indices = {}
+  for index, _ in pairs(tbl) do
+    indices[#indices + 1] = index
+  end
+  return indices
+end
+
+---an iterator for for.
+---@param tbl table
+---@return function next
+---@return table tbl
+---@return nil
+function Helper.sortedpairs(tbl)
+  local indices = Helper.indices(tbl)
+  table.sort(indices) -- todo: does this work?
+  local i = 1
+  return function(tble, oldindex)
+    local index = indices[i]
+    i = i + 1
+    return index, tble[index]
+  end, tbl, nil
+end
+
 return Helper

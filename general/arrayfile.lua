@@ -15,23 +15,17 @@ call tree:
     readEntriesValues
         readEntryValues
             readEntry
-                _read_seek
-                    _read
-                    (read_stream)
-                    (read_index)
+                (read_stream)
                 _read
-                    (read_stream)
-                    (read_index)
+                    _seek
                 decode
     writeEntries
         writeEntry
             encode
-            _write_seek
-                (write_stream)
-                (write_index)
+            (write_stream)
             _write
-                (write_stream)
-                (write_index)
+                _seek
+                
 
 ```
 ]]
@@ -45,10 +39,8 @@ call tree:
 ---@field size integer
 ---@field sizes integer[] -- currently unused
 ---@field entryMetatable table
----@field read_stream buffer
----@field read_index integer
----@field write_stream buffer
----@field write_index integer
+---@field read_stream positionstream
+---@field write_stream positionstream
 local arrayfile = {}
 
 arrayfile.__index = arrayfile
@@ -65,7 +57,7 @@ function arrayfile.splitArgString(str)
     end
 end
 
----opens a file
+---creates a new arrayfile object
 ---@param filename string
 ---@param formats string[] |string -- sequence or space/punctuation-separated string.pack format strings
 ---@param nameList string[] |string
@@ -101,9 +93,19 @@ function arrayfile.make(filename, formats, nameList)
                             key .. '" in arrayfile "' .. filename .. '". valid keys: ' .. table.concat(nameList, " ")
                     )
             ]
+        end,
+        --- todo: this might be better to not enable? it should be immutable
+        __newindex = function(entry, key, value)
+            entry[
+                    arrf.nameIndex[key] or
+                        error(
+                            'no such key: "' ..
+                                key ..
+                                    '" in arrayfile "' .. filename .. '". valid keys: ' .. table.concat(nameList, " ")
+                        )
+                ] = value
         end
     }
-
     return arrf
 end
 
@@ -141,65 +143,151 @@ function arrayfile:encode(entry)
     return pairs
 end
 
-function arrayfile:setRead(stream)
-    self.read_stream = stream
-    self.read_index = 0
+function arrayfile:openRead()
+    self:setRead(io.open(self.filename, "rb"))
+    return self.read_stream
 end
-function arrayfile:setWrite(stream)
-    self.write_stream = stream
-    self.write_index = 0
+function arrayfile:openWrite()
+    self:setWrite(io.open(self.filename, "ab"))
+    return self.write_stream
+end
+function arrayfile:closeRead()
+    if self.read_stream then
+        self.read_stream:close()
+        self.read_stream = nil
+    end
+end
+function arrayfile:closeWrite()
+    if self.write_stream then
+        self.write_stream:close()
+        self.write_stream = nil
+    end
 end
 
-function arrayfile:_read_seek(index, offset)
-    local position = index * self.size + (offset or 0)
-    if self.read_index == position then
+function arrayfile:close()
+    self:closeRead()
+    self:closeWrite()
+end
+
+function arrayfile:setRead(stream)
+    self:closeRead()
+    self.read_stream = self.positionstream.make(stream)
+end
+
+function arrayfile:setWrite(stream)
+    self:closeWrite()
+    self.write_stream = self.positionstream.make(stream)
+end
+
+function arrayfile:getRead()
+    return self.read_stream or self:openRead() -- todo: this automatically opens a read. is this okay?
+end
+function arrayfile:getWrite()
+    return self.write_stream or self:openWrite()
+end
+
+function arrayfile:getPosition(index, offset)
+    return index * self.size + (offset or 0)
+end
+
+---@class positionstream
+---@field actualstream buffer
+---@field position integer
+---@field flushed boolean
+arrayfile.positionstream = {}
+arrayfile.positionstream.__index = arrayfile.positionstream
+
+---@param actualstream buffer
+---@return positionstream
+function arrayfile.positionstream.make(actualstream)
+    -- position starts as maxinteger so that the first seek must set absolute position
+    return setmetatable(
+        {actualstream = actualstream, position = math.maxinteger, flushed = true},
+        arrayfile.positionstream
+    )
+end
+
+---comment
+---@param position integer
+function arrayfile.positionstream:seek(position)
+    if self.position == position then
         return
     else
-        local distance = position - self.read_index
-        if 0 < distance and distance < 1000 then -- todo: 1000 is arbitrary.
-            self:_read(distance) -- often just reading the stream is faster than seeking. not possible for write
+        local distance = position - self.position
+        if self.actualstream.mode.r and 0 < distance and distance < 1000 then -- todo: 1000 is arbitrary.
+            self:read(distance) -- often just reading the stream is faster than seeking. not possible for write
         else
-            local newpos = self.read_stream:seek("set", position)
-            self.read_index = newpos
+            local newpos = self.actualstream:seek("set", position)
+            self.position = newpos
         end
     end
 end
-function arrayfile:_write_seek(index, offset)
-    local position = index * self.size + (offset or 0)
-    if self.write_index == position then
-        return
-    else
-        local newpos = self.write_stream:seek("set", position)
-        self.write_index = newpos
-    end
+
+function arrayfile.positionstream:write(position, str)
+    self:seek(position)
+    self.actualstream:write(str)
+    self.position = self.position + #str
+    self.flushed = false
 end
 
-function arrayfile:_write(str)
-    self.write_stream:write(str)
-    self.write_index = self.write_index + #str
-end
-
-function arrayfile:_read(length)
-    local out = self.read_stream:read(length)
-    self.read_index = self.read_index + #(out or "")
+function arrayfile.positionstream:read(position, length)
+    self:seek(position)
+    local out = self.actualstream:read(length)
+    self.position = self.position + #(out or "")
     return out
+end
+
+function arrayfile.positionstream:flush()
+    self.flushed = true
+    return self.actualstream:flush()
+end
+function arrayfile.positionstream:close()
+    return self.actualstream:close()
 end
 
 ---readEntry, except it only retrieves the stated keys
 ---if only some of the entry's values are cached, if only they are requested, the non-cached values won't be retrieved
----returns the entry, then its values in the order given in keys
 ---@param index integer
 ---@param keys string|string[]
 ---@return entry entry
----@return ... any -- values corresponding to keys
 function arrayfile:readEntryValues(index, keys)
     local entry = self:readEntry(index) -- todo: cache
+    keys = arrayfile.splitArgString(keys)
+    return entry
+end
+
+---unpacks the entry with the given keys
+---@param entry entry
+---@param keys string|string[]
+---@return any ...
+function arrayfile.unpackEntry(entry, keys)
     keys = arrayfile.splitArgString(keys)
     local unpacked = {}
     for i = 1, #keys do
         unpacked[i] = entry[keys[i]]
     end
-    return entry, table.unpack(unpacked, 1, #keys)
+    return table.unpack(unpacked, 1, #keys)
+end
+
+---updates targetEntry with values in newValues
+---@param targetEntry entry
+---@param newValues entry
+function arrayfile.updateEntry(targetEntry, newValues)
+    for i, value in pairs(newValues) do -- this works whether or not entry has entryMetatable
+        -- self.entryMetatable.__newindex(original, i, value)
+        targetEntry[i] = value
+    end
+end
+
+---readEntryValues, but additionally returns its values in the order given in keys
+---@param index integer
+---@param keys string|string[]
+---@return entry entry
+---@return ... any -- values corresponding to keys
+function arrayfile:readEntryValuesFancy(index, keys)
+    keys = arrayfile.splitArgString(keys)
+    local entry = self:readEntryValues(index, keys) -- todo: cache
+    return entry, arrayfile.unpackEntry(entry, keys)
 end
 
 ---do multiple readEntryValues at once.
@@ -209,8 +297,7 @@ end
 ---@return table<integer,entry> indices_entries
 function arrayfile:readEntriesValues(indices_keys)
     local indices_entries = {}
-    table.sort(indices_keys) -- todo: does this work?
-    for index, keys in pairs(indices_keys) do
+    for index, keys in Helper.sortedpairs(indices_keys) do
         indices_entries[index] = self:readEntryValues(index, keys)
     end
     return indices_entries
@@ -220,8 +307,7 @@ end
 ---nil keeps old value
 ---@param indices_entries table<integer,entry>
 function arrayfile:writeEntries(indices_entries)
-    table.sort(indices_entries) -- todo: does this work?
-    for index, entry in pairs(indices_entries) do
+    for index, entry in Helper.sortedpairs(indices_entries) do
         self:writeEntry(index, entry)
     end
 end
@@ -232,8 +318,7 @@ end
 function arrayfile:writeEntry(index, entry)
     local encoded = self:encode(entry)
     for i = 1, #encoded do
-        self:_write_seek(index, encoded[i][1])
-        self:_write(encoded[i][2])
+        self:getWrite():write(self:getPosition(index, encoded[i][1]), encoded[i][2])
     end
 end
 
@@ -241,8 +326,7 @@ end
 ---@param index integer
 ---@return entry entry
 function arrayfile:readEntry(index)
-    self:_read_seek(index)
-    local data = self:_read(self.size)
+    local data = self:getRead():read(self:getPosition(index), self.size)
     return self:decode(data)
 end
 
