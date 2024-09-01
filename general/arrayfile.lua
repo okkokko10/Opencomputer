@@ -45,10 +45,15 @@ call tree:
 ---@field entryMetatable table
 ---@field read_stream positionstream
 ---@field write_stream positionstream
----@field file_offset? integer -- see [positionstream.offset]
+---@field file_offset integer -- see [positionstream.offset]
 local arrayfile = {}
 
 arrayfile.__index = arrayfile
+
+---determines how much space at the beginning of the file will be allocated for metadata. (not counting two rows that describe nameList and formats)
+---added to file_offset
+---the whole of the metadata string can be accessed with self:readEntry(-math.huge)
+arrayfile.metadataSize = 128
 
 ---splits a string by whitespace/punctuation
 ---if it's already split, do nothing and return it
@@ -68,14 +73,14 @@ end
 ---@param formats? string[] |string -- sequence or space/punctuation-separated string.pack format strings. if nil,  reads namelist as alternating [name, format ...]
 function arrayfile.make(filename, nameList, formats)
     checkArg(1, filename, "string")
-    local file_offset = 0
+    local file_offset = arrayfile.metadataSize
     local read_stream
     if not nameList then
         local readf = io.open(filename, "rb")
         assert(readf, "cannot read file " .. filename)
         nameList = readf:read("L") or ""
         formats = readf:read("L") or ""
-        file_offset = #formats + #nameList
+        file_offset = file_offset + #formats + #nameList
         local stripPattern = "^[%s%p]*(.-)[%s%p]*$"
         nameList = string.match(nameList, stripPattern)
         formats = string.match(formats, stripPattern)
@@ -276,13 +281,16 @@ end
 ---comment
 ---@param position integer
 function arrayfile.positionstream:seek(position)
+    if position == nil then
+        return
+    end
     if self.position == position then
         return
     else
         local distance = position - self.position
         ---@diagnostic disable-next-line: undefined-field
         if self.actualstream.mode.r and 0 < distance and distance < self.read_seek_max then -- todo: 1000 is arbitrary.
-            self:read(self.position, distance) -- often just reading the stream is faster than seeking. not possible for write
+            self:read(nil, distance) -- often just reading the stream is faster than seeking. not possible for write
         else
             local newpos = self.actualstream:seek("set", position + self.offset) - self.offset
             self.position = newpos
@@ -300,7 +308,11 @@ end
 function arrayfile.positionstream:read(position, length)
     self:seek(position)
     local out = self.actualstream:read(length)
-    self.position = self.position + #(out or "")
+    local resultlength = #(out or "")
+    self.position = self.position + resultlength
+    if resultlength < length then
+        return out .. string.rep("\0", length - resultlength)
+    end
     return out
 end
 
@@ -315,7 +327,7 @@ end
 ---readEntry, except it only retrieves the stated keys
 ---if only some of the entry's values are cached, if only they are requested, the non-cached values won't be retrieved
 ---@param index integer
----@param keys string|string[]
+---@param keys nil|true|string|string[]
 ---@return entry entry
 function arrayfile:readEntry(index, keys)
     local entry = self:readEntryDirect(index)
@@ -398,6 +410,13 @@ end
 ---@param index integer
 ---@param entry table
 function arrayfile:writeEntry(index, entry)
+    if index == -math.huge then
+        if entry.metadata then
+            assert(#entry.metadata <= self.metadataSize, entry.metadata)
+            self:getWrite():write(-self.metadataSize, entry.metadata)
+        end
+        return
+    end
     local encoded = self:encode(entry)
     for i = 1, #encoded do
         self:getWrite():write(self:getPosition(index, encoded[i][1]), encoded[i][2])
@@ -407,6 +426,9 @@ end
 ---@param index integer
 ---@return entry entry
 function arrayfile:readEntryDirect(index)
+    if index == -math.huge then
+        return self:getRead():read(-self.metadataSize, self.metadataSize)
+    end
     local data = self:getRead():read(self:getPosition(index), self.size)
     return self:decode(data, index)
 end
@@ -423,6 +445,21 @@ function arrayfile.entryHolesFilled(entry, otherEntry)
     else
         return otherEntry -- todo: smarter.
     end
+end
+
+function arrayfile:readMetadata()
+    return self:readEntry(-math.huge).metadata
+end
+---comment
+---@param string string
+---@return nil
+function arrayfile:writeMetadata(string)
+    local metadata = string.sub(string, 1, self.metadataSize)
+    local padding = self.metadataSize - #metadata
+    if padding > 0 then
+        metadata = metadata .. string.rep("\0", padding - 1) .. "\n"
+    end
+    return self:writeEntry(-math.huge, {metadata = metadata})
 end
 
 -- ---encodes a complete entry
