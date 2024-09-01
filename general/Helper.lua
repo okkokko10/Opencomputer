@@ -41,12 +41,21 @@ function Helper.mapIndexed(target, fun)
   return out
 end
 
-function Helper.splitString(str, pattern)
+function Helper.splitString(str, pattern, discardEmpty)
   local i, j = string.find(str, pattern)
   if i then
-    return string.sub(str, 1, i - 1), Helper.splitString(string.sub(str, j + 1), pattern)
+    local part = string.sub(str, 1, i - 1)
+    if discardEmpty and part == "" then
+      return Helper.splitString(string.sub(str, j + 1), pattern, discardEmpty)
+    else
+      return part, Helper.splitString(string.sub(str, j + 1), pattern, discardEmpty) -- repetition because tail recursion.
+    end
   else
-    return str
+    if discardEmpty and str == "" then
+      return
+    else
+      return str
+    end
   end
 end
 

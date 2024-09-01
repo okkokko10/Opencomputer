@@ -649,11 +649,11 @@ Files:
   -- if it can be given that unique items have ids:
   ## slotdatabase
 
-  Stored:
+  Slots:
     constant memory size array.
     because it's designed to be dense, has a constant size, only affected by the number of slots, not how many are filled.
     (itemID, amount, prevSlot, nextSlot, containerHash)
-    arrayfile.open(lpath,"I3 I4 I3 I3 I1","itemID amount prev next container")
+    arrayfile.make(lpath,"itemID amount prev next containerHash","I3 I4 I3 I3 I1")
     containerHash is a 1-byte value that narrows down the container.
     prevSlot and nextSlot point to the previous and next index in this array that stores this item. 
       it's a two-way linked list.
@@ -740,3 +740,9 @@ DH unique items: < 19_000
 
 
 Idea: set trash filtered unstackable items to be stored in a specified container without storing what they are
+
+
+Idea: fluids, energy, other, are called AbstractItem
+They are contained in AbstractContainer.
+when an abstract container is empty, it does not contain air, but something else.
+fluid storage grows dynamically? How to deal with? Permanently add a slot to Stored when needed?

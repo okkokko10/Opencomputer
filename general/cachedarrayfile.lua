@@ -8,16 +8,19 @@ local Helper = require("Helper")
 ---@field read_current_size integer
 ---@field write_max_size integer
 ---@field read_max_size integer
+---@field assume_behaviour boolean? -- if truthy, enables assume
 local cachedarrayfile = setmetatable({}, arrayfile)
+
+cachedarrayfile.__index = cachedarrayfile
 
 ---creates a new cachedarrayfile object
 ---@param filename string
----@param formats string[] |string -- sequence or space/punctuation-separated string.pack format strings
----@param nameList string[] |string
+---@param nameList? string[] |string
+---@param formats? string[] |string -- sequence or space/punctuation-separated string.pack format strings
 ---@param write_max_size? integer = 1000
 ---@param read_max_size? integer = 1000
-function cachedarrayfile.make(filename, formats, nameList, write_max_size, read_max_size)
-    local arrf = arrayfile.make(filename, formats, nameList)
+function cachedarrayfile.make(filename, nameList, formats, write_max_size, read_max_size)
+    local arrf = arrayfile.make(filename, nameList, formats)
     ---@cast arrf cachedarrayfile
     arrf.writecache = {}
     arrf.write_current_size = 0
@@ -30,11 +33,11 @@ end
 
 ---writes entry to index. if some values are blank, they are left as is
 ---@param index integer
----@param entry entry
+---@param entry table
 function cachedarrayfile:writeEntry(index, entry)
     local original = self.writecache[index]
     if not original then
-        original = setmetatable({}, self.entryMetatable)
+        original = self:makeEntry({}, index)
         self.writecache[index] = original
         self.write_current_size = self.write_current_size + 1
     end
@@ -43,6 +46,7 @@ function cachedarrayfile:writeEntry(index, entry)
     if cached then
         arrayfile.updateEntry(cached, entry)
     end
+    self:checkCacheSize()
 end
 ---flushes writes to the file. if saveToReadcache is true, the writecache is transferred to readcache instead of disappearing.
 ---@param saveToReadcache boolean?
@@ -53,14 +57,15 @@ function cachedarrayfile:flushWrites(saveToReadcache)
             self.readcache[index] = entry
             self.read_current_size = self.read_current_size + 1
         end
-        arrayfile.writeEntry(self, index, self.readcache[index] or entry) -- since a readcache element is up to date with writecache when it exists, this might avoid unnecessary seeking
+        arrayfile.writeEntry(self, index, arrayfile.entryHolesFilled(entry, self.readcache[index])) -- since a readcache element is up to date with writecache when it exists, this might avoid unnecessary seeking
     end
     self.writecache = {}
     self.write_current_size = 0
+    self:closeWrite()
 end
 
 ---if caches are too large, flush/clear them.
-function cachedarrayfile:checkSize()
+function cachedarrayfile:checkCacheSize()
     if self.write_current_size > self.write_max_size then
         self:flushWrites()
     end
@@ -83,15 +88,20 @@ function cachedarrayfile:clearReadcache()
     self.read_current_size = 0
 end
 
----readEntry, except it only retrieves the stated keys
+---only retrieves the stated keys if they are cached.
+---if keys is true or nil, get all values
 ---if only some of the entry's values are cached, if only they are requested, the non-cached values won't be retrieved
 ---@param index integer
----@param keys string|string[]
+---@param keys true|nil|string|string[]
 ---@return entry entry
-function cachedarrayfile:readEntryValues(index, keys)
-    keys = arrayfile.splitArgString(keys)
+function cachedarrayfile:readEntry(index, keys)
     local cached = self.readcache[index] or self.writecache[index]
     if cached then
+        if keys == true or keys == nil then
+            keys = self.nameList
+        else
+            keys = arrayfile.splitArgString(keys)
+        end
         local works = true
         for i = 1, #keys do
             if cached[keys[i]] == nil then
@@ -104,15 +114,39 @@ function cachedarrayfile:readEntryValues(index, keys)
         end
     end
 
-    local entry = self:readEntry(index)
+    local entry = self:readEntryDirect(index)
     if self.writecache[index] then
         arrayfile.updateEntry(entry, self.writecache[index]) -- update loaded entry with cached, not yet saved changes
     end
     if not self.readcache[index] then
         self.read_current_size = self.read_current_size + 1
+        self:checkCacheSize()
     end
     self.readcache[index] = entry
     return entry
+end
+
+---warning: causes undefined behaviour if the input data is wrong.
+---updates the entry in the readcache. this does not write to the array directly.
+---works as an assertion if the data happens to already be cached: check if this matches it.
+---tip: partially read entries' unread values are nil, so using them here works
+---@param index integer
+---@param entry table
+function cachedarrayfile:assume(index, entry)
+    if not self.assume_behaviour then
+        return
+    end
+    local original = self.readcache[index]
+    if not original then
+        original = self:makeEntry({}, index)
+        self.readcache[index] = original
+        self.read_current_size = self.read_current_size + 1
+        local write = self.writecache[index]
+        if write then
+            arrayfile.updateEntry(original, write)
+        end
+    end
+    arrayfile.updateEntrySubsetCheck(original, entry)
 end
 
 return cachedarrayfile

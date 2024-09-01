@@ -154,3 +154,6 @@ w = io.open(lpath,"w"); r = io.open(lpath,"r")
 
 r:seek("set"); w:seek("set")
 for i = 1, 1000 do local inp = r:read(1); if not inp then break end if inp == " " then inp = "\n" end w:write(inp) end
+
+Stored = cachedarrayfile.make(lpath,"itemID amount prev next container","I3 I4 I3 I3 I1")
+Stored:writeEntries({[3]={itemID = 5, amount = 63, prev = 0, next = 0}})
