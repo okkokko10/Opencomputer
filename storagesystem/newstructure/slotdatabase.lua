@@ -53,6 +53,54 @@ function Slots:changeItem(index, itemIn_itemID, itemIn_topSlot, inAmount)
     return new_itemOut_topSlot, new_itemOut_bottomSlot, new_itemIn_topSlot
 end
 
+local eventual = require("eventual")
+
+---overwrite the entry at index, setting its itemID and amount, and making it the new topSlot
+---@param index integer|EventualValue
+---@param itemIn_itemID integer|EventualValue
+---@param itemIn_topSlot integer|EventualValue
+---@param inAmount integer|EventualValue
+---@return integer|nil|EventualValue new_itemOut_topSlot
+---@return integer|nil|EventualValue new_itemOut_bottomSlot
+---@return integer|EventualValue new_itemIn_topSlot
+function Slots:changeItemEventual(index, itemIn_itemID, itemIn_topSlot, inAmount)
+    local new_itemOut_topSlot
+    local new_itemOut_bottomSlot
+    local new_itemIn_topSlot
+
+    local oldItem = eventual.wrap(self):readEntry(index, "next prev")
+
+    eventual.wrap(self):assume(oldItem.prev, {next = index, itemID = oldItem.itemID})
+
+    local cond = eventual.neq(oldItem.prev, 0)
+    eventual.IF(cond)
+        eventual.assert(eventual.neq(oldItem.prev, oldItem.next))
+        eventual.wrap(self):writeEntry(oldItem.prev, {next = oldItem.next})
+    eventual.END()
+        -- old item had no prev; it was the bottom. this means the new bottom is oldItem.next
+
+    new_itemOut_bottomSlot = eventual.choose(cond, nil, oldItem.next)
+    
+    local cond2 =eventual.eq(oldItem.next,0)
+    new_itemOut_topSlot = eventual.choose(cond2, oldItem.prev,nil)
+    eventual.IF(cond2)
+        -- means index == itemOut.topSlot
+    eventual.ELSE()
+        eventual.wrap(self):assume(oldItem.next, {prev = index, itemID = oldItem.itemID})
+        eventual.wrap(self):writeEntry(oldItem.next, {prev = oldItem.prev})
+    eventual.END()
+    -- new item in. put it at the top of its linked list
+    eventual.wrap(self):writeEntry(index,{prev = itemIn_topSlot, next = 0, itemID = itemIn_itemID, amount = inAmount})
+    eventual.IF(eventual.neq(itemIn_topSlot,0))
+        eventual.wrap(self):assume(itemIn_topSlot, {itemID = itemIn_itemID, next = 0})
+        eventual.wrap(self):writeEntry(itemIn_topSlot, {next = index})
+    eventual.END()
+
+    new_itemIn_topSlot = index
+    return new_itemOut_topSlot, new_itemOut_bottomSlot, new_itemIn_topSlot
+end
+
+
 function Slots:checkAssertion(index)
     if index == 0 then
         return

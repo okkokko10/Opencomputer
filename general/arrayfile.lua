@@ -121,6 +121,7 @@ function arrayfile.make(filename, nameList, formats)
         nameIndex[nameList[i]] = i
         nameIndex[i] = i -- makes it so valid number indices are recognized
     end
+    nameIndex["_i"] = "_i"
     arrf.nameIndex = nameIndex
     local offsets = {}
     local size = 0
@@ -356,6 +357,17 @@ function arrayfile.updateEntry(targetEntry, newValues)
         targetEntry[i] = value
     end
 end
+---like updateEntry, but not in place.
+---@param targetEntry entry
+---@param newValues entry
+---@return entry
+function arrayfile.updatedEntry(targetEntry,newValues)
+    local new = setmetatable({},getmetatable(targetEntry))
+    arrayfile.updateEntry(new,targetEntry)
+    arrayfile.updateEntry(new,newValues)
+    return new 
+end
+
 
 ---updates targetEntry with values in newValues, but an existing value must be the same or it causes an error
 ---@param targetEntry entry

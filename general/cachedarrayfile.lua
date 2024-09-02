@@ -43,10 +43,10 @@ function cachedarrayfile:writeEntry(index, entry)
         self.writecache[index] = original
         self.write_current_size = self.write_current_size + 1
     end
-    arrayfile.updateEntry(original, entry)
+    self.writecache[index] = arrayfile.updatedEntry(original, entry) -- change so that data read previously does not change suddenly
     local cached = self.readcache[index]
     if cached then
-        arrayfile.updateEntry(cached, entry)
+        self.readcache[index] = arrayfile.updatedEntry(cached, entry)
     end
     self:checkCacheSize()
 end
