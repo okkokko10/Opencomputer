@@ -1,5 +1,7 @@
 local cachedarrayfile = require("cachedarrayfile")
 
+
+---@class slotdatabase
 local slotdatabase = {}
 
 ---@class Slots: cachedarrayfile
@@ -81,10 +83,51 @@ function slotdatabase.setSize(arrf, size)
     string.gsub(arrf:readMetadata(), "^....", string.pack("I4", size), 1)
 end
 
-local ItemData = cachedarrayfile.make("/usr/storage/itemData.arrayfile", "amount: I4, top: I3, bottom: I3, info: I4")
+local ItemData = cachedarrayfile.make("/usr/storage/itemData.arrayfile", "amount: I4, top: I3, bottom: I3, info: I4, stacksize: I1")
 
 slotdatabase.Slots = Slots
 slotdatabase.ItemData = ItemData
+
+---todo: a branch of the database, with its own writes that can be commited or rolled back.
+---@class Transaction
+---@field database slotdatabase
+---@field suppressor1  { finish:  fun() }
+---@field suppressor2  { finish:  fun() }
+local Transaction = {}
+function Transaction:commit()
+
+    --- temporary:
+    self.suppressor1:finish()
+    self.suppressor2:finish()
+    -- todo: unimplemented.
+    return self.database
+end
+function Transaction:rollback()
+    -- todo: unimplemented
+    return self.database
+end
+
+---creates a Transaction.
+---@param database slotdatabase
+---@return slotdatabase|Transaction
+function Transaction.create(database)
+    local tr = setmetatable({database=database,commit=Transaction.commit,rollback=Transaction.rollback},{__index = database})
+    
+    --temporary. doesn't even work properly, since it also takes old flushes
+    tr.suppressor1 = database.Slots:suppressFlush()
+    tr.suppressor2 = database.ItemData:suppressFlush()
+    
+
+    return tr
+end
+
+
+function slotdatabase:beginTransaction()
+    return Transaction.create(self)
+end
+
+---todo: give abstract orders that ask to use a value that is fetched later.
+---todo: slots that have 0 of an item are converted to air if they are also the top.
 
 ---changes the item at slot index from out_itemID to in_itemID (with amount amount)
 ---does not update the total amounts
@@ -98,6 +141,36 @@ function slotdatabase:changeItem(index, in_itemID, out_itemID, amount)
     self.ItemData:writeEntry(in_itemID, {top = in_top, bottom = (newItem.bottom == 0) and in_top or nil})
     self.ItemData:writeEntry(out_itemID, {top = out_top, bottom = out_bottom})
 end
+
+---updates the item data at the slot accordingly. Handles updating total item amounts.
+---Updating from a scan can be done by setting each item with this.
+---Setting an item that exists in that slot (once items have finished moving around (todo: needs more consideration)) is valid.
+---@param index integer
+---@param itemID integer
+---@param amount integer
+function slotdatabase:setItem(index, itemID, amount)
+    local oldSlot = self.Slots:readEntry(index,"itemID amount")
+    local old_itemID = oldSlot.itemID
+    local old_amount = oldSlot.amount
+    if itemID == old_itemID then
+        self.Slots:writeEntry(index,{amount=amount})
+        local old_new_total_amount = self.ItemData:readEntry(itemID, "amount").amount
+        self.ItemData:writeEntry(itemID,{amount = old_new_total_amount + amount - old_amount})
+    else
+        local old_total_amounts = self.ItemData:readEntries({
+            [itemID] = "amount",
+            [old_itemID] = "amount"
+        })
+        local old_new_total_amount = old_total_amounts[itemID].amount
+        local old_old_total_amount = old_total_amounts[old_itemID].amount
+        self:changeItem(index,itemID,old_itemID,amount)
+        self.ItemData:writeEntries({
+            [itemID] = {amount = old_new_total_amount + amount},
+            [old_itemID] = {amount = old_old_total_amount - old_amount}
+        })
+    end
+end
+
 
 function slotdatabase:flush()
     self.ItemData:flushWrites(true)

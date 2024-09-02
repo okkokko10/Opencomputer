@@ -9,6 +9,7 @@ local Helper = require("Helper")
 ---@field write_max_size integer
 ---@field read_max_size integer
 ---@field assume_behaviour boolean? -- if truthy, enables assume
+---@field private flush_suppressors table -- if nonempty, flush is suppressed
 local cachedarrayfile = setmetatable({}, arrayfile)
 
 cachedarrayfile.__index = cachedarrayfile
@@ -28,6 +29,7 @@ function cachedarrayfile.make(filename, nameList, formats, write_max_size, read_
     arrf.readcache = {}
     arrf.read_current_size = 0
     arrf.read_max_size = read_max_size or 1000
+    arrf.flush_suppressors = setmetatable({},{__mode="k"})
     return setmetatable(arrf, cachedarrayfile)
 end
 
@@ -48,9 +50,29 @@ function cachedarrayfile:writeEntry(index, entry)
     end
     self:checkCacheSize()
 end
+
+---returns an object that suppresses this from flushing until it gets `finish` called (or it is garbage collected)
+---@return { finish:  fun() } suppressor
+function cachedarrayfile:suppressFlush()
+    local suppressor
+    suppressor = {finish = function ()
+        self.flush_suppressors[suppressor] = nil
+    end}
+    self.flush_suppressors[suppressor] = true
+    return suppressor
+end
+
+function cachedarrayfile:isFlushSuppressed()
+    return next(self.flush_suppressors) ~= nil
+end
+
+
 ---flushes writes to the file. if saveToReadcache is true, the writecache is transferred to readcache instead of disappearing.
 ---@param saveToReadcache boolean?
 function cachedarrayfile:flushWrites(saveToReadcache)
+    if self:isFlushSuppressed() then
+        return nil, "suppressed"
+    end
     -- essentially arrayfile:writeEntries
     for index, entry in Helper.sortedpairs(self.writecache) do
         if saveToReadcache and not self.readcache[index] then
@@ -62,6 +84,7 @@ function cachedarrayfile:flushWrites(saveToReadcache)
     self.writecache = {}
     self.write_current_size = 0
     self:closeWrite()
+    return true
 end
 
 ---if caches are too large, flush/clear them.
