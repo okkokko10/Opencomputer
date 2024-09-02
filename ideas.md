@@ -746,3 +746,27 @@ Idea: fluids, energy, other, are called AbstractItem
 They are contained in AbstractContainer.
 when an abstract container is empty, it does not contain air, but something else.
 fluid storage grows dynamically? How to deal with? Permanently add a slot to Stored when needed?
+Unmanaged drive's performance seems faster?
+ inconclusive. if using multiple files, seeking while changing through them would be slow.
+
+
+Hmm, rethinking Lock?
+
+
+ItemHashes
+1-bit modID hash, 
+1-byte bitmask of the existence of letters in the name.
+  abcd  8
+  efgh  2
+  ijkl  39
+  mnop  40
+  qrs   5
+  tuvw  67
+  xy z_ 1
+  possibly do a calculation of what letters most often appear with other letters, and group them together.
+1-byte sum of chars.
+1-byte meta (does it need a whole bit?)
+label letter 1-byte bitmask     -- the 0000 0000 might be underused. maybe items whose label is the same as their name? that might complicate calculation, though.
+1-byte: itemdata hash first byte
+6 bytes
+meta's most significant bit could encode whether there's been a hash collision

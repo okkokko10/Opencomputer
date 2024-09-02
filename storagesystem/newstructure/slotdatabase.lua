@@ -12,7 +12,16 @@ local Slots =
 Slots.assume_behaviour = true
 
 local ItemData =
-    cachedarrayfile.make("/usr/storage/itemData.arrayfile", "amount: I4, top: I3, bottom: I3, info: I4, stacksize: I1")
+    cachedarrayfile.make(
+    "/usr/storage/itemData.arrayfile", --
+    "amount: I4, top: I3, bottom: I3, info: I4, stacksize: I1"
+)
+
+local ItemHashes =
+    cachedarrayfile.make(
+    "/user/storage/itemHashes.arrayfile",
+    "modIDhash: I1, nameLetters I1, charSum I1, meta I1, labelLetters I1 dataHash I1"
+)
 
 slotdatabase.Slots = Slots
 slotdatabase.ItemData = ItemData
