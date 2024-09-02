@@ -1,6 +1,5 @@
 local cachedarrayfile = require("cachedarrayfile")
 
-
 ---@class slotdatabase
 local slotdatabase = {}
 
@@ -11,6 +10,12 @@ local Slots =
     "itemID: I3, amount: I4, next: I3, prev: I3, containerHash: I1"
 )
 Slots.assume_behaviour = true
+
+local ItemData =
+    cachedarrayfile.make("/usr/storage/itemData.arrayfile", "amount: I4, top: I3, bottom: I3, info: I4, stacksize: I1")
+
+slotdatabase.Slots = Slots
+slotdatabase.ItemData = ItemData
 
 ---overwrite the entry at index, setting its itemID and amount, and making it the new topSlot
 ---@param index integer
@@ -74,32 +79,31 @@ function Slots:changeItemEventual(index, itemIn_itemID, itemIn_topSlot, inAmount
 
     local cond = eventual.neq(oldItem.prev, 0)
     eventual.IF(cond)
-        eventual.assert(eventual.neq(oldItem.prev, oldItem.next))
-        eventual.wrap(self):writeEntry(oldItem.prev, {next = oldItem.next})
+    eventual.assert(eventual.neq(oldItem.prev, oldItem.next))
+    eventual.wrap(self):writeEntry(oldItem.prev, {next = oldItem.next})
     eventual.END()
-        -- old item had no prev; it was the bottom. this means the new bottom is oldItem.next
+    -- old item had no prev; it was the bottom. this means the new bottom is oldItem.next
 
     new_itemOut_bottomSlot = eventual.choose(cond, nil, oldItem.next)
-    
-    local cond2 =eventual.eq(oldItem.next,0)
-    new_itemOut_topSlot = eventual.choose(cond2, oldItem.prev,nil)
+
+    local cond2 = eventual.eq(oldItem.next, 0)
+    new_itemOut_topSlot = eventual.choose(cond2, oldItem.prev, nil)
     eventual.IF(cond2)
-        -- means index == itemOut.topSlot
+    -- means index == itemOut.topSlot
     eventual.ELSE()
-        eventual.wrap(self):assume(oldItem.next, {prev = index, itemID = oldItem.itemID})
-        eventual.wrap(self):writeEntry(oldItem.next, {prev = oldItem.prev})
+    eventual.wrap(self):assume(oldItem.next, {prev = index, itemID = oldItem.itemID})
+    eventual.wrap(self):writeEntry(oldItem.next, {prev = oldItem.prev})
     eventual.END()
     -- new item in. put it at the top of its linked list
-    eventual.wrap(self):writeEntry(index,{prev = itemIn_topSlot, next = 0, itemID = itemIn_itemID, amount = inAmount})
-    eventual.IF(eventual.neq(itemIn_topSlot,0))
-        eventual.wrap(self):assume(itemIn_topSlot, {itemID = itemIn_itemID, next = 0})
-        eventual.wrap(self):writeEntry(itemIn_topSlot, {next = index})
+    eventual.wrap(self):writeEntry(index, {prev = itemIn_topSlot, next = 0, itemID = itemIn_itemID, amount = inAmount})
+    eventual.IF(eventual.neq(itemIn_topSlot, 0))
+    eventual.wrap(self):assume(itemIn_topSlot, {itemID = itemIn_itemID, next = 0})
+    eventual.wrap(self):writeEntry(itemIn_topSlot, {next = index})
     eventual.END()
 
     new_itemIn_topSlot = index
     return new_itemOut_topSlot, new_itemOut_bottomSlot, new_itemIn_topSlot
 end
-
 
 function Slots:checkAssertion(index)
     if index == 0 then
@@ -131,11 +135,6 @@ function slotdatabase.setSize(arrf, size)
     string.gsub(arrf:readMetadata(), "^....", string.pack("I4", size), 1)
 end
 
-local ItemData = cachedarrayfile.make("/usr/storage/itemData.arrayfile", "amount: I4, top: I3, bottom: I3, info: I4, stacksize: I1")
-
-slotdatabase.Slots = Slots
-slotdatabase.ItemData = ItemData
-
 ---todo: a branch of the database, with its own writes that can be commited or rolled back.
 ---@class Transaction
 ---@field database slotdatabase
@@ -143,7 +142,6 @@ slotdatabase.ItemData = ItemData
 ---@field suppressor2  { finish:  fun() }
 local Transaction = {}
 function Transaction:commit()
-
     --- temporary:
     self.suppressor1:finish()
     self.suppressor2:finish()
@@ -159,16 +157,18 @@ end
 ---@param database slotdatabase
 ---@return slotdatabase|Transaction
 function Transaction.create(database)
-    local tr = setmetatable({database=database,commit=Transaction.commit,rollback=Transaction.rollback},{__index = database})
-    
+    local tr =
+        setmetatable(
+        {database = database, commit = Transaction.commit, rollback = Transaction.rollback},
+        {__index = database}
+    )
+
     --temporary. doesn't even work properly, since it also takes old flushes
     tr.suppressor1 = database.Slots:suppressFlush()
     tr.suppressor2 = database.ItemData:suppressFlush()
-    
 
     return tr
 end
-
 
 function slotdatabase:beginTransaction()
     return Transaction.create(self)
@@ -197,28 +197,32 @@ end
 ---@param itemID integer
 ---@param amount integer
 function slotdatabase:setItem(index, itemID, amount)
-    local oldSlot = self.Slots:readEntry(index,"itemID amount")
+    local oldSlot = self.Slots:readEntry(index, "itemID amount")
     local old_itemID = oldSlot.itemID
     local old_amount = oldSlot.amount
     if itemID == old_itemID then
-        self.Slots:writeEntry(index,{amount=amount})
+        self.Slots:writeEntry(index, {amount = amount})
         local old_new_total_amount = self.ItemData:readEntry(itemID, "amount").amount
-        self.ItemData:writeEntry(itemID,{amount = old_new_total_amount + amount - old_amount})
+        self.ItemData:writeEntry(itemID, {amount = old_new_total_amount + amount - old_amount})
     else
-        local old_total_amounts = self.ItemData:readEntries({
-            [itemID] = "amount",
-            [old_itemID] = "amount"
-        })
+        local old_total_amounts =
+            self.ItemData:readEntries(
+            {
+                [itemID] = "amount",
+                [old_itemID] = "amount"
+            }
+        )
         local old_new_total_amount = old_total_amounts[itemID].amount
         local old_old_total_amount = old_total_amounts[old_itemID].amount
-        self:changeItem(index,itemID,old_itemID,amount)
-        self.ItemData:writeEntries({
-            [itemID] = {amount = old_new_total_amount + amount},
-            [old_itemID] = {amount = old_old_total_amount - old_amount}
-        })
+        self:changeItem(index, itemID, old_itemID, amount)
+        self.ItemData:writeEntries(
+            {
+                [itemID] = {amount = old_new_total_amount + amount},
+                [old_itemID] = {amount = old_old_total_amount - old_amount}
+            }
+        )
     end
 end
-
 
 function slotdatabase:flush()
     self.ItemData:flushWrites(true)

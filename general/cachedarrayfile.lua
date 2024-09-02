@@ -29,7 +29,7 @@ function cachedarrayfile.make(filename, nameList, formats, write_max_size, read_
     arrf.readcache = {}
     arrf.read_current_size = 0
     arrf.read_max_size = read_max_size or 1000
-    arrf.flush_suppressors = setmetatable({},{__mode="k"})
+    arrf.flush_suppressors = setmetatable({}, {__mode = "k"})
     return setmetatable(arrf, cachedarrayfile)
 end
 
@@ -55,9 +55,11 @@ end
 ---@return { finish:  fun() } suppressor
 function cachedarrayfile:suppressFlush()
     local suppressor
-    suppressor = {finish = function ()
-        self.flush_suppressors[suppressor] = nil
-    end}
+    suppressor = {
+        finish = function()
+            self.flush_suppressors[suppressor] = nil
+        end
+    }
     self.flush_suppressors[suppressor] = true
     return suppressor
 end
@@ -65,7 +67,6 @@ end
 function cachedarrayfile:isFlushSuppressed()
     return next(self.flush_suppressors) ~= nil
 end
-
 
 ---flushes writes to the file. if saveToReadcache is true, the writecache is transferred to readcache instead of disappearing.
 ---@param saveToReadcache boolean?
