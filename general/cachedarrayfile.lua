@@ -37,7 +37,7 @@ function cachedarrayfile:getReadCache(index)
     return self.readcache[index]
 end
 
-function cachedarrayfile:setReadCache(index,value)
+function cachedarrayfile:setReadCache(index, value)
     if self.readcache[index] == nil then
         self.write_current_size = self.write_current_size + 1
     end
@@ -47,28 +47,27 @@ function cachedarrayfile:setReadCache(index,value)
     self.readcache[index] = value
 end
 
-function cachedarrayfile:updateReadCacheIfExists(index,value)
+function cachedarrayfile:updateReadCacheIfExists(index, value)
     local old = self:getReadCache(index)
     if old then
-        self:setReadCache(index,arrayfile.updatedEntry(old,value))
+        self:setReadCache(index, arrayfile.updatedEntry(old, value))
     end
 end
-function cachedarrayfile:updateReadCache(index,value)
-    self:setReadCache(index,arrayfile.updatedEntry(self:getReadCache(index),value))
+function cachedarrayfile:updateReadCache(index, value)
+    self:setReadCache(index, arrayfile.updatedEntry(self:getReadCache(index), value))
 end
-function cachedarrayfile:setReadCacheUnlessExists(index,value)
+function cachedarrayfile:setReadCacheUnlessExists(index, value)
     local old = self:getReadCache(index)
     if not old then
-        self:setReadCache(index,value)
+        self:setReadCache(index, value)
     end
-    
 end
 
 function cachedarrayfile:getWriteCache(index)
     return self.writecache[index]
 end
 
-function cachedarrayfile:setWriteCache(index,value)
+function cachedarrayfile:setWriteCache(index, value)
     if self.writecache[index] == nil then
         self.write_current_size = self.write_current_size + 1
     end
@@ -78,21 +77,23 @@ function cachedarrayfile:setWriteCache(index,value)
     self.writecache[index] = value
 end
 
-function cachedarrayfile:updateWriteCache(index,value)
-    self:setWriteCache(index,arrayfile.updatedEntry(self:getWriteCache(index),value))
+function cachedarrayfile:updateWriteCache(index, value)
+    self:setWriteCache(index, arrayfile.updatedEntry(self:getWriteCache(index), value))
 end
 
+---get a cached entry
+---@param index integer
+---@return entry?
 function cachedarrayfile:getCached(index)
-    return arrayfile.updatedEntry(self:getReadCache(index),self:getWriteCache(index))
+    return arrayfile.updatedEntry(self:getReadCache(index), self:getWriteCache(index))
 end
-
 
 ---writes entry to index. if some values are blank, they are left as is
 ---@param index integer
 ---@param entry table
 function cachedarrayfile:writeEntry(index, entry)
-    self:updateWriteCache(index,entry)
-    -- self:updateReadCacheIfExists(index,entry)
+    self:updateWriteCache(index, entry)
+    self:updateReadCacheIfExists(index, entry)
     self:checkCacheSize()
 end
 
@@ -122,7 +123,7 @@ function cachedarrayfile:flushWrites(saveToReadcache)
     -- essentially arrayfile:writeEntries
     for index, entry in Helper.sortedpairs(self.writecache) do
         if saveToReadcache then
-            self:setReadCacheUnlessExists(index,entry)
+            self:setReadCacheUnlessExists(index, entry)
         end
         arrayfile.writeEntry(self, index, arrayfile.entryHolesFilled(entry, self:getReadCache(index))) -- since a readcache element is up to date with writecache when it exists, this might avoid unnecessary seeking
     end
@@ -170,24 +171,17 @@ function cachedarrayfile:readEntry(index, keys)
         else
             keys = arrayfile.splitArgString(keys)
         end
-        local works = true
-        for i = 1, #keys do
-            if cached[keys[i]] == nil then
-                works = false
-                break
-            end
-        end
-        if works then
+        if arrayfile.entryHasKeys(cached, keys) then
             return cached
         end
     end
 
     local entry = self:readEntryDirect(index)
     -- arrayfile.updateEntry(entry, self.writecache[index]) -- update loaded entry with cached, not yet saved changes
-    self:setReadCache(index,entry)
     self:checkCacheSize()
-    
-    return self:getCached(index)
+    self:setReadCache(index, entry)
+
+    return self:getCached(index) or error()
 end
 
 ---warning: causes undefined behaviour if the input data is wrong.
@@ -213,22 +207,63 @@ function cachedarrayfile:assume(index, entry)
     arrayfile.updateEntrySubsetCheck(original, entry)
 end
 
-function cachedarrayfile:branch()
-    -- todo
-    return {
-        parent = self,
-        readEntry = function (slf,index,keys)
-            return arrayfile.updatedEntry(slf.parent:readEntry(index,keys),slf:getWriteCache(index))
-        end,
-        writeEntry = function (slf, index, entry)
-            
-        end
-
-}
-    
-
+function cachedarrayfile:commit()
+    error("cannot commit the main")
 end
 
+function cachedarrayfile:rollback()
+    error("cannot rollback the main")
+end
+local BranchCachedArrayFile
+---comment
+---@return cachedarrayfile
+function cachedarrayfile:branch()
+    -- todo
+    return setmetatable(
+        {
+            parent = self,
+            writecache = {}
+        },
+        BranchCachedArrayFile
+    )
+end
 
+---@class BranchCachedArrayFile: cachedarrayfile
+---@field parent cachedarrayfile
+---@field writecache table<integer,entry>
+BranchCachedArrayFile =
+    setmetatable(
+    {
+        __index = BranchCachedArrayFile,
+        readEntry = function(self, index, keys)
+            -- todo: now does not take into account if slf.writecache has some keys
+            return arrayfile.updatedEntry(self.parent:readEntry(index, keys), self.writecache[index])
+        end,
+        writeEntry = function(self, index, entry)
+            self.writecache[index] = arrayfile.updatedEntry(self.writecache[index], entry)
+        end,
+        commit = function(self)
+            self.parent:writeEntries(self.writecache)
+            self.writecache = {}
+            return self.parent
+        end,
+        rollback = function(self)
+            self.writecache = {}
+            return self.parent
+        end,
+        branch = cachedarrayfile.branch,
+        readEntries = cachedarrayfile.readEntries,
+        writeEntries = cachedarrayfile.writeEntries,
+        assume = function()
+            -- does nothing
+        end
+    },
+    {
+        __index = function(t, k) -- means attributes not redefined here are same as the original
+            --this could lead to problems?
+            return t.parent[k]
+        end
+    }
+)
 
 return cachedarrayfile

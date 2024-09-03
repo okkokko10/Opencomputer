@@ -362,11 +362,25 @@ end
 ---@param newValues entry?
 ---@return entry?
 function arrayfile.updatedEntry(targetEntry, newValues)
-    if not (targetEntry or newValues) then return nil end
+    if not (targetEntry or newValues) then
+        return nil
+    end
     local new = setmetatable({}, getmetatable(targetEntry or newValues))
     arrayfile.updateEntry(new, targetEntry)
     arrayfile.updateEntry(new, newValues)
     return new
+end
+
+---checks whether the entry has all the described keys
+---@param entry entry
+---@param keys string[]
+function arrayfile.entryHasKeys(entry, keys)
+    for i = 1, #keys do
+        if entry[keys[i]] == nil then
+            return false
+        end
+    end
+    return true
 end
 
 ---updates targetEntry with values in newValues, but an existing value must be the same or it causes an error

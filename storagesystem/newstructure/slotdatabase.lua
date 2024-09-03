@@ -23,8 +23,13 @@ local ItemHashes =
     "modIDhash: I1, nameLetters I1, charSum I1, meta I1, labelLetters I1 dataHash I1"
 )
 
+-- local Mods = CachedListFile
+
 slotdatabase.Slots = Slots
 slotdatabase.ItemData = ItemData
+slotdatabase.ItemHashes = ItemHashes
+
+slotdatabase.arrayNames = {"Slots", "ItemData", "ItemHashes"}
 
 ---overwrite the entry at index, setting its itemID and amount, and making it the new topSlot
 ---@param index integer
@@ -145,19 +150,27 @@ function slotdatabase.setSize(arrf, size)
 end
 
 ---todo: a branch of the database, with its own writes that can be commited or rolled back.
----@class Transaction
+---@class Transaction: slotdatabase
 ---@field database slotdatabase
----@field suppressor1  { finish:  fun() }
----@field suppressor2  { finish:  fun() }
+-- -@field suppressor1  { finish:  fun() }
+-- -@field suppressor2  { finish:  fun() }
 local Transaction = {}
 function Transaction:commit()
     --- temporary:
-    self.suppressor1:finish()
-    self.suppressor2:finish()
-    -- todo: unimplemented.
+    -- self.suppressor1:finish()
+    -- self.suppressor2:finish()
+
+    for _, name in ipairs(self.arrayNames) do
+        self[name]:commit()
+    end
+
     return self.database
 end
 function Transaction:rollback()
+    for _, name in ipairs(self.arrayNames) do
+        self[name]:rollback()
+    end
+
     -- todo: unimplemented
     return self.database
 end
@@ -166,15 +179,20 @@ end
 ---@param database slotdatabase
 ---@return slotdatabase|Transaction
 function Transaction.create(database)
-    local tr =
-        setmetatable(
-        {database = database, commit = Transaction.commit, rollback = Transaction.rollback},
-        {__index = database}
-    )
+    local transaction = {
+        database = database,
+        commit = Transaction.commit,
+        rollback = Transaction.rollback
+    }
+    for _, name in ipairs(database.arrayNames) do
+        transaction[name] = database[name]:branch()
+    end
+
+    local tr = setmetatable(transaction, {__index = database})
 
     --temporary. doesn't even work properly, since it also takes old flushes
-    tr.suppressor1 = database.Slots:suppressFlush()
-    tr.suppressor2 = database.ItemData:suppressFlush()
+    -- tr.suppressor1 = database.Slots:suppressFlush()
+    -- tr.suppressor2 = database.ItemData:suppressFlush()
 
     return tr
 end
@@ -234,8 +252,9 @@ function slotdatabase:setItem(index, itemID, amount)
 end
 
 function slotdatabase:flush()
-    self.ItemData:flushWrites(true)
-    self.Slots:flushWrites(true)
+    for _, name in ipairs(self.arrayNames) do
+        self[name]:flushWrites(true)
+    end
 end
 
 ---adds a new item.
@@ -283,6 +302,16 @@ function slotdatabase:addSlots(containerID, air_itemID, count)
     self.ItemData:writeEntry(air_itemID, newAir)
     self.setSize(self.Slots, size)
     return start, size - 1
+end
+
+---comment
+---@param modname string
+---@return integer
+function slotdatabase:getModId(modname)
+    return 1 -- todo
+end
+function slotdatabase:makeItemHash(item)
+    self:getModId(item.modname) -- todo
 end
 
 return slotdatabase
