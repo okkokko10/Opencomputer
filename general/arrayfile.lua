@@ -350,19 +350,20 @@ end
 
 ---updates targetEntry with values in newValues
 ---@param targetEntry entry
----@param newValues entry
+---@param newValues entry?
 function arrayfile.updateEntry(targetEntry, newValues)
-    for i, value in pairs(newValues) do -- this works whether or not entry has entryMetatable
+    for i, value in pairs(newValues or {}) do -- this works whether or not entry has entryMetatable
         -- self.entryMetatable.__newindex(original, i, value)
         targetEntry[i] = value
     end
 end
 ---like updateEntry, but not in place.
----@param targetEntry entry
----@param newValues entry
----@return entry
+---@param targetEntry entry?
+---@param newValues entry?
+---@return entry?
 function arrayfile.updatedEntry(targetEntry, newValues)
-    local new = setmetatable({}, getmetatable(targetEntry))
+    if not (targetEntry or newValues) then return nil end
+    local new = setmetatable({}, getmetatable(targetEntry or newValues))
     arrayfile.updateEntry(new, targetEntry)
     arrayfile.updateEntry(new, newValues)
     return new
