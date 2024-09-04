@@ -1,4 +1,5 @@
 local Helper = require "Helper"
+local arrayfile_entry = require("arrayfile_entry")
 ---@alias buffer file*
 
 ---an entry in an arrayfile.
@@ -132,45 +133,7 @@ function arrayfile.make(filename, nameList, formats)
     arrf.size = size
     arrf.offsets = offsets
 
-    arrf.entryMetatable = {
-        __index = function(entry, key)
-            return rawget(
-                entry,
-                arrf.nameIndex[key] or
-                    error(
-                        'no such key: "' ..
-                            key .. '" in arrayfile "' .. filename .. '". valid keys: ' .. table.concat(nameList, " ")
-                    )
-            )
-        end,
-        --- todo: this might be better to not enable? it should be immutable
-        __newindex = function(entry, key, value)
-            rawset(
-                entry,
-                arrf.nameIndex[key] or
-                    error(
-                        'no such key: "' ..
-                            key .. '" in arrayfile "' .. filename .. '". valid keys: ' .. table.concat(nameList, " ")
-                    ),
-                value
-            )
-        end,
-        __pairs = function(entry)
-            local i = 0
-            local nex = function(ent, key)
-                local out
-                repeat
-                    i = i + 1
-                    out = rawget(ent, i)
-                until out ~= nil or i > #arrf.nameList
-                return arrf.nameList[i], out
-            end
-            return nex, entry
-        end,
-        nameList = arrf.nameList,
-        nameIndex = arrf.nameIndex,
-        parent = arrf
-    }
+    arrf.entryMetatable = arrayfile_entry.makeEntryMetatable(arrf)
     return arrf
 end
 
@@ -350,125 +313,6 @@ function arrayfile:readEntry(index, keys)
     return entry
 end
 
----unpacks the entry with the given keys
----@param entry entry
----@param keys string|string[]
----@return any ...
-function arrayfile.unpackEntry(entry, keys)
-    keys = arrayfile.splitArgString(keys)
-    local unpacked = {}
-    for i = 1, #keys do
-        unpacked[i] = entry[keys[i]]
-    end
-    return table.unpack(unpacked, 1, #keys)
-end
-
----makes an empty entry with the same index and metatable as model
----@param model entry
----@return entry
-function arrayfile.makeEntryWithEntry(model)
-    return setmetatable({_i = model._i}, getmetatable(model))
-end
-
----updates targetEntry with values in newValues
----@param targetEntry entry
----@param newValues entry?
----@private -- only used in updatedEntry
-function arrayfile.updateEntry(targetEntry, newValues)
-    for i, value in pairs(newValues or {}) do -- this works whether or not entry has entryMetatable
-        -- self.entryMetatable.__newindex(original, i, value)
-        targetEntry[i] = value
-    end
-end
----like updateEntry, but not in place.
----@param targetEntry entry?
----@param newValues entry?
----@return entry?
-function arrayfile.updatedEntry(targetEntry, newValues)
-    if not (targetEntry or newValues) then
-        return nil
-    end
-    local new = arrayfile.makeEntryWithEntry(targetEntry or newValues --[[@as entry --not nil]])
-    arrayfile.updateEntry(new, targetEntry)
-    arrayfile.updateEntry(new, newValues)
-    return new
-end
-
----checks whether the entry has all the described keys
----@param entry entry
----@param keys string[]
-function arrayfile.entryHasKeys(entry, keys)
-    for i = 1, #keys do
-        if entry[keys[i]] == nil then
-            return false
-        end
-    end
-    return true
-end
-
----could pattern be a subset of entry (if there was more info)? symmetrical.
----also, is the current info about entry enough to say that it matches the pattern?
----@param entry entry?
----@param pattern entry?
----@return boolean might
----@return boolean will
-function arrayfile.entriesMightMatch(entry, pattern)
-    if not pattern then
-        return true, true
-    end
-    if not entry then
-        return true, false
-    end
-    local every = true
-    for i, value in pairs(pattern) do
-        local a1 = entry[i]
-        if a1 then
-            if a1 ~= value then
-                return false, false
-            end
-        else
-            every = false
-        end
-    end
-    return true, every
-end
-
----entry with keys common with remove removed
----@param entry entry?
----@param remove entry?
----@return entry?
-function arrayfile.entrySetMinus(entry, remove)
-    if not entry then
-        return nil
-    end
-    if not remove then
-        return entry
-    end
-
-    local new = arrayfile.makeEntryWithEntry(entry)
-    for i, value in pairs(entry) do
-        if not remove[i] then
-            new[i] = value
-        end
-    end
-    return new
-end
-
----updates targetEntry with values in newValues, but an existing value must be the same or it causes an error
----@param targetEntry entry
----@param newValues entry
-function arrayfile.updateEntrySubsetCheck(targetEntry, newValues)
-    for i, value in pairs(newValues) do -- this works whether or not newValues has entryMetatable
-        -- self.entryMetatable.__newindex(original, i, value)
-        local old = targetEntry[i]
-        if old then
-            assert(value == old, "new value didn't match up with old value")
-        else
-            targetEntry[i] = value
-        end
-    end
-end
-
 ---readEntryValues, but additionally returns its values in the order given in keys
 ---@param index integer
 ---@param keys string|string[]
@@ -477,7 +321,7 @@ end
 function arrayfile:readEntryFancy(index, keys)
     keys = arrayfile.splitArgString(keys)
     local entry = self:readEntry(index, keys) -- todo: cache
-    return entry, arrayfile.unpackEntry(entry, keys)
+    return entry, arrayfile_entry.unpackEntry(entry, keys)
 end
 
 ---do multiple readEntryValues at once.
@@ -607,13 +451,13 @@ function arrayfile:find(pattern, from, to, keys)
     keys = keys and arrayfile.splitArgString(keys)
     for i = from, to do
         local cached = self:getCached(i)
-        local might, will = arrayfile.entriesMightMatch(cached, pattern)
+        local might, will = arrayfile_entry.entriesMightMatch(cached, pattern)
         if might then
             if will then
                 return self:readEntry(i, keys), i
             else
                 local read = self:readEntry(i, "!") -- here would go pattern's all keys, but it is already known that the cached does not contain all of them.
-                might, will = arrayfile.entriesMightMatch(read, pattern)
+                might, will = arrayfile_entry.entriesMightMatch(read, pattern)
                 if will then
                     return read, i
                 end

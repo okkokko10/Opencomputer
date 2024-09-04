@@ -1,4 +1,5 @@
 local arrayfile = require("arrayfile")
+local arrayfile_entry = require("arrayfile_entry")
 local Helper = require("Helper")
 
 ---@class cachedarrayfile: arrayfile
@@ -50,11 +51,11 @@ end
 function cachedarrayfile:updateReadCacheIfExists(index, value)
     local old = self:getReadCache(index)
     if old then
-        self:setReadCache(index, arrayfile.updatedEntry(old, value))
+        self:setReadCache(index, arrayfile_entry.updatedEntry(old, value))
     end
 end
 function cachedarrayfile:updateReadCache(index, value)
-    self:setReadCache(index, arrayfile.updatedEntry(self:getReadCache(index), value))
+    self:setReadCache(index, arrayfile_entry.updatedEntry(self:getReadCache(index), value))
 end
 function cachedarrayfile:setReadCacheUnlessExists(index, value)
     local old = self:getReadCache(index)
@@ -78,7 +79,7 @@ function cachedarrayfile:setWriteCache(index, value)
 end
 
 function cachedarrayfile:updateWriteCache(index, value)
-    self:setWriteCache(index, arrayfile.updatedEntry(self:getWriteCache(index), value))
+    self:setWriteCache(index, arrayfile_entry.updatedEntry(self:getWriteCache(index), value))
 end
 
 ---get a cached entry
@@ -173,7 +174,7 @@ function cachedarrayfile:readEntry(index, keys)
             else
                 keys = arrayfile.splitArgString(keys)
             end
-            if arrayfile.entryHasKeys(cached, keys) then
+            if arrayfile_entry.entryHasKeys(cached, keys) then
                 return cached
             end
         end
@@ -199,11 +200,11 @@ function cachedarrayfile:assume(index, entry)
     end
     -- == "check" or == "checkfile"
     local current = self:getCached(index)
-    local might, will = arrayfile.entriesMightMatch(current, entry)
+    local might, will = arrayfile_entry.entriesMightMatch(current, entry)
     if self.assume_behaviour.checkfile then
         if might and not will then -- if might is false, this won't change that.
             current = self:readEntry(index, "!")
-            might, will = arrayfile.entriesMightMatch(current, entry)
+            might, will = arrayfile_entry.entriesMightMatch(current, entry)
         end
     end
     if not might then
@@ -217,7 +218,7 @@ function cachedarrayfile:assume(index, entry)
     end
 
     if self.assume_behaviour.update then
-        self:updateReadCache(index, arrayfile.entrySetMinus(entry, current))
+        self:updateReadCache(index, arrayfile_entry.entrySetMinus(entry, current))
     end
 end
 
@@ -251,14 +252,14 @@ BranchCachedArrayFile =
         readcache = false, -- hopefully triggers errors when this is accessed (it's not supposed to be)
         __index = BranchCachedArrayFile,
         getCached = function(self, index)
-            return arrayfile.updatedEntry(self.parent:getCached(index), self.writecache[index])
+            return arrayfile_entry.updatedEntry(self.parent:getCached(index), self.writecache[index])
         end,
         readEntry = function(self, index, keys)
             -- todo: now does not take into account if slf.writecache has some keys
-            return arrayfile.updatedEntry(self.parent:readEntry(index, keys), self.writecache[index])
+            return arrayfile_entry.updatedEntry(self.parent:readEntry(index, keys), self.writecache[index])
         end,
         writeEntry = function(self, index, entry)
-            self.writecache[index] = arrayfile.updatedEntry(self.writecache[index], entry)
+            self.writecache[index] = arrayfile_entry.updatedEntry(self.writecache[index], entry)
         end,
         commit = function(self)
             self.parent:writeEntries(self.writecache)
