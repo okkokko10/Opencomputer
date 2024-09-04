@@ -310,8 +310,31 @@ end
 function slotdatabase:getModId(modname)
     return 1 -- todo
 end
+
+local letterBitmask = require("letterBitmask")
+
+-- "modIDhash: I1, nameLetters I1, charSum I1, meta I1, labelLetters I1 dataHash I1"
+function slotdatabase:make_ItemHashes_modIDhash(item)
+    return self:getModId(item.modname)
+end
+function slotdatabase:make_ItemHashes_nameLetters(item)
+    return letterBitmask.make(item.name)
+end
+function slotdatabase:make_ItemHashes_charSum(item)
+    return letterBitmask.charSum(item.name)
+end
+function slotdatabase:make_ItemHashes_meta(item)
+    return item.meta & 0xFF
+end
+function slotdatabase:make_ItemHashes_labelLetters(item)
+    return letterBitmask.make(item.label)
+end
+function slotdatabase:make_ItemHashes_dataHash(item)
+    return tonumber(string.sub(item.hash, 1, 2), 16) & 0xFF
+end
+
 function slotdatabase:makeItemHash(item)
-    self:getModId(item.modname) -- todo
+    self:make_ItemHashes_modIDhash(item) -- todo
 end
 
 return slotdatabase
