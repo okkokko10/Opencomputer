@@ -8,7 +8,7 @@ local Helper = require("Helper")
 ---@field read_current_size integer
 ---@field write_max_size integer
 ---@field read_max_size integer
----@field assume_behaviour boolean? -- if truthy, enables assume
+---@field assume_behaviour { disabled: boolean?, check: boolean?, checkfile: boolean?, update: boolean? }? -- assume options
 ---@field private flush_suppressors table -- if nonempty, flush is suppressed
 local cachedarrayfile = setmetatable({}, arrayfile)
 
@@ -85,7 +85,7 @@ end
 ---@param index integer
 ---@return entry?
 function cachedarrayfile:getCached(index)
-    return arrayfile.updatedEntry(self:getReadCache(index), self:getWriteCache(index))
+    return self:getReadCache(index) or self:getWriteCache(index)
 end
 
 ---writes entry to index. if some values are blank, they are left as is
@@ -158,21 +158,24 @@ function cachedarrayfile:clearReadcache()
 end
 
 ---only retrieves the stated keys if they are cached.
----if keys is true or nil, get all values
+---if keys is false or nil, get all values
+---if keys is "!", ignore cached.
 ---if only some of the entry's values are cached, if only they are requested, the non-cached values won't be retrieved
 ---@param index integer
----@param keys true|nil|string|string[]
+---@param keys false|nil|string|string[]
 ---@return entry entry
 function cachedarrayfile:readEntry(index, keys)
-    local cached = self:getCached(index)
-    if cached then
-        if keys == true or keys == nil then
-            keys = self.nameList
-        else
-            keys = arrayfile.splitArgString(keys)
-        end
-        if arrayfile.entryHasKeys(cached, keys) then
-            return cached
+    if keys ~= "!" then
+        local cached = self:getCached(index)
+        if cached then
+            if not keys then
+                keys = self.nameList
+            else
+                keys = arrayfile.splitArgString(keys)
+            end
+            if arrayfile.entryHasKeys(cached, keys) then
+                return cached
+            end
         end
     end
 
@@ -191,20 +194,31 @@ end
 ---@param index integer
 ---@param entry table
 function cachedarrayfile:assume(index, entry)
-    if not self.assume_behaviour then
+    if (not self.assume_behaviour) or self.assume_behaviour.disabled then
         return
     end
-    local original = self.readcache[index]
-    if not original then
-        original = self:makeEntry({}, index)
-        self.readcache[index] = original
-        self.read_current_size = self.read_current_size + 1
-        local write = self.writecache[index]
-        if write then
-            arrayfile.updateEntry(original, write)
+    -- == "check" or == "checkfile"
+    local current = self:getCached(index)
+    local might, will = arrayfile.entriesMightMatch(current, entry)
+    if self.assume_behaviour.checkfile then
+        if might and not will then -- if might is false, this won't change that.
+            current = self:readEntry(index, "!")
+            might, will = arrayfile.entriesMightMatch(current, entry)
         end
     end
-    arrayfile.updateEntrySubsetCheck(original, entry)
+    if not might then
+        error(
+            "assumption was wrong: at index " ..
+                index ..
+                    "entry was " ..
+                        self:formatEntry(current) .. ", it was assumed it would match " .. self:formatEntry(entry),
+            2
+        )
+    end
+
+    if self.assume_behaviour.update then
+        self:updateReadCache(index, arrayfile.entrySetMinus(entry, current))
+    end
 end
 
 function cachedarrayfile:commit()
@@ -234,7 +248,11 @@ end
 BranchCachedArrayFile =
     setmetatable(
     {
+        readcache = false, -- hopefully triggers errors when this is accessed (it's not supposed to be)
         __index = BranchCachedArrayFile,
+        getCached = function(self, index)
+            return arrayfile.updatedEntry(self.parent:getCached(index), self.writecache[index])
+        end,
         readEntry = function(self, index, keys)
             -- todo: now does not take into account if slf.writecache has some keys
             return arrayfile.updatedEntry(self.parent:readEntry(index, keys), self.writecache[index])
@@ -254,8 +272,8 @@ BranchCachedArrayFile =
         branch = cachedarrayfile.branch,
         readEntries = cachedarrayfile.readEntries,
         writeEntries = cachedarrayfile.writeEntries,
-        assume = function()
-            -- does nothing
+        updateReadCache = function(self, index, value)
+            self.parent:updateReadCache(index, value) -- allowed for the sake of assume update
         end
     },
     {

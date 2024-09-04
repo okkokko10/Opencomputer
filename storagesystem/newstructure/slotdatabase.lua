@@ -9,7 +9,7 @@ local Slots =
     "/usr/storage/slots.arrayfile",
     "itemID: I3, amount: I4, next: I3, prev: I3, containerHash: I1"
 )
-Slots.assume_behaviour = true
+Slots.assume_behaviour = {check = true}
 
 local ItemData =
     cachedarrayfile.make(
