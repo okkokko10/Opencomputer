@@ -128,7 +128,7 @@ function cachedarrayfile:flushWrites(saveToReadcache)
         if saveToReadcache then
             self:setReadCacheUnlessExists(index, entry)
         end
-        self.super.writeEntry(self, index, self.super.entryHolesFilled(entry, self:getReadCache(index))) -- since a readcache element is up to date with writecache when it exists, this might avoid unnecessary seeking
+        self.super.writeEntry(self, index, arrayfile_entry.entryHolesFilled(entry, self:getReadCache(index))) -- since a readcache element is up to date with writecache when it exists, this might avoid unnecessary seeking
     end
     self.writecache = {}
     self.write_current_size = 0
@@ -165,7 +165,7 @@ end
 ---if keys is "!", ignore cached.
 ---if only some of the entry's values are cached, if only they are requested, the non-cached values won't be retrieved
 ---@param index integer
----@param keys false|nil|string|string[]
+---@param keys keysArg
 ---@return entry entry
 function cachedarrayfile:readEntry(index, keys)
     if keys ~= "!" then
@@ -174,7 +174,7 @@ function cachedarrayfile:readEntry(index, keys)
             if not keys then
                 keys = self.nameList
             else
-                keys = arrayfile.splitArgString(keys)
+                keys = arrayfile_entry.splitArgString(keys)
             end
             if arrayfile_entry.entryHasKeys(cached, keys) then
                 return cached
@@ -182,7 +182,7 @@ function cachedarrayfile:readEntry(index, keys)
         end
     end
 
-    local entry = self:readEntryDirect(index)
+    local entry = self.super:readEntry(index)
     -- arrayfile.updateEntry(entry, self.writecache[index]) -- update loaded entry with cached, not yet saved changes
     self:checkCacheSize()
     self:setReadCache(index, entry)

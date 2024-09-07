@@ -1,6 +1,7 @@
 local Helper = require "Helper"
 local arrayfile_entry = require("arrayfile_entry")
 local positionstream = require("positionstream")
+local GenericDataFile = require("GenericDataFile")
 ---@alias buffer file*
 
 ---an entry in an arrayfile.
@@ -35,10 +36,10 @@ call tree:
 
 ```
 ]]
----@class arrayfile
+---@class arrayfile: GenericDataFile
 ---@field filename string
----@field nameIndex table<string,integer>
----@field nameList string[]
+---@field nameIndex table<string,integer|string> -- from external to internal entry key names
+---@field nameList string[] -- list of entry key names
 ---@field wholeFormat string
 ---@field formats string[]
 ---@field offsets integer[]
@@ -56,8 +57,6 @@ arrayfile.__index = arrayfile
 ---added to file_offset
 ---the whole of the metadata string can be accessed with self:readEntry(-math.huge)
 arrayfile.metadataSize = 128
-
-arrayfile.splitArgString = arrayfile_entry.splitArgString
 
 ---creates a new arrayfile object
 ---@param filename string
@@ -83,7 +82,7 @@ function arrayfile.make(filename, nameList, formats)
     else
     end
 
-    nameList = arrayfile.splitArgString(nameList)
+    nameList = arrayfile_entry.splitArgString(nameList) --[[@as string[] ]]
     if not formats then
         -- `formats` can be of the form "[name In ...]"
         local f = {}
@@ -98,7 +97,7 @@ function arrayfile.make(filename, nameList, formats)
         nameList = n
         formats = f
     else
-        formats = arrayfile.splitArgString(formats)
+        formats = arrayfile_entry.splitArgString(formats) --[[@as string[] ]]
     end
     ---@type arrayfile
     local arrf =
@@ -222,49 +221,11 @@ function arrayfile:getPosition(index, offset)
     return index * self.size + (offset or 0)
 end
 
----readEntry, except it only retrieves the stated keys
----if only some of the entry's values are cached, if only they are requested, the non-cached values won't be retrieved
----@param index integer
----@param keys nil|false|string|string[]
----@return entry entry
-function arrayfile:readEntry(index, keys)
-    local entry = self:readEntryDirect(index)
-    return entry
-end
+arrayfile.readEntryFancy = GenericDataFile.readEntryFancy
 
----readEntryValues, but additionally returns its values in the order given in keys
----@param index integer
----@param keys string|string[]
----@return entry entry
----@return ... any -- values corresponding to keys
-function arrayfile:readEntryFancy(index, keys)
-    keys = arrayfile.splitArgString(keys)
-    local entry = self:readEntry(index, keys) -- todo: cache
-    return entry, arrayfile_entry.unpackEntry(entry, keys)
-end
+arrayfile.readEntries = GenericDataFile.readEntries
 
----do multiple readEntryValues at once.
----proper way to query values.
---- {[3]="a b c",[5]="d c"} => {[3]={a=?,b=?,c=?},[5]={d=?,c=?}}
----@param indices_keys table<integer,true|string|string[]>
----@return table<integer,entry> indices_entries
-function arrayfile:readEntries(indices_keys)
-    local indices_entries = {}
-    for index, keys in Helper.sortedpairs(indices_keys) do
-        indices_entries[index] = self:readEntry(index, keys)
-    end
-    return indices_entries
-end
-
----calls self:writeEntry(index,value) on all index-value pairs, in ascending order.
----writes entries. in a sense updates this with indices_entries.
----nil keeps old value
----@param indices_entries table<integer,table>
-function arrayfile:writeEntries(indices_entries)
-    for index, entry in Helper.sortedpairs(indices_entries) do
-        self:writeEntry(index, entry)
-    end
-end
+arrayfile.writeEntries = GenericDataFile.writeEntries
 
 ---writes entry to index. if some values are blank, they are left as is
 ---@param index integer
@@ -275,146 +236,37 @@ function arrayfile:writeEntry(index, entry)
             assert(#entry.metadata <= self.metadataSize, entry.metadata)
             self:getWrite():write(-self.metadataSize, entry.metadata)
         end
-        return
-    end
-    local encoded = self:encode(entry)
-    for i = 1, #encoded do
-        self:getWrite():write(self:getPosition(index, encoded[i][1]), encoded[i][2])
+    else
+        local encoded = self:encode(entry)
+        for i = 1, #encoded do
+            self:getWrite():write(self:getPosition(index, encoded[i][1]), encoded[i][2])
+        end
     end
 end
 
 ---@param index integer
+---@param keys keysArg
 ---@return entry entry
-function arrayfile:readEntryDirect(index)
+function arrayfile:readEntry(index, keys)
     if index == -math.huge then
-        return self:getRead():read(-self.metadataSize, self.metadataSize)
+        return {metadata = self:getRead():read(-self.metadataSize, self.metadataSize), _i = -math.huge}
     end
     local data = self:getRead():read(self:getPosition(index), self.size)
     return self:decode(data, index)
 end
 
----entry must be a subset of otherEntry.
----return an entry that contains entry, but has less or equal holes
----for use in write, so that one does not need to seek.
+arrayfile.getCached = GenericDataFile.getCached
+
+arrayfile.formatEntry = GenericDataFile.formatEntry
+
+---returns the position of the entry after this one
 ---@param entry entry
----@param otherEntry entry?
----@return entry
-function arrayfile.entryHolesFilled(entry, otherEntry)
-    if not otherEntry then
-        return entry
-    else
-        return otherEntry -- todo: smarter.
-    end
+---@return integer
+function arrayfile:next(entry)
+    return entry._i + 1
 end
 
----gets the metadata string, of length `self.metadataSize`
----@return string
-function arrayfile:readMetadata()
-    return self:readEntry(-math.huge).metadata
-end
----comment
----@param string string
----@return nil
-function arrayfile:writeMetadata(string)
-    local metadata = string.sub(string, 1, self.metadataSize)
-    local padding = self.metadataSize - #metadata
-    if padding > 0 then
-        metadata = metadata .. string.rep("\0", padding - 1) .. "\n"
-    end
-    return self:writeEntry(-math.huge, {metadata = metadata})
-end
-
----get a cached entry, if caching exists. otherwise get nothing
----@param index integer
----@return entry?
-function arrayfile:getCached(index)
-    return nil
-end
-
----formats an entry to a human-readable string
---- usually it is of the format `index:[key: value, ...]`
---- if it has attributes outside of what an entry is supposed to have, they are added to the end: format `index:[key: value, ...](unknownkey: value, ...)`
---- if index is unknown it is replaced with "-"
---- if entry is nil, returns "-:nil"
----@param entry entry?
----@return string
-function arrayfile:formatEntry(entry)
-    if not entry then
-        return "-:nil"
-    end
-    local strings = {}
-    for _, keyname in ipairs(self.nameList) do
-        local value = entry[keyname]
-        if value then
-            strings[#strings + 1] = keyname .. ": " .. value
-        end
-    end
-    local other = {}
-    for key, value in pairs(entry) do
-        if not self.nameIndex[key] then
-            other[#other + 1] = key .. ": " .. value
-        end
-    end
-    return (entry["_i"] or "-") ..
-        ":[" .. table.concat(strings, ", ") .. "]" .. (#other > 0 and "(" .. table.concat(other, ",") .. ")" or "")
-end
-
----find the first entry that matches pattern
----@param pattern entry
----@param from integer
----@param to integer
----@param keys string[] | string | nil | false
----@return entry?
----@return integer?
-function arrayfile:find(pattern, from, to, keys)
-    keys = keys and arrayfile.splitArgString(keys)
-    for i = from, to do
-        local cached = self:getCached(i)
-        local might, will = arrayfile_entry.entriesMightMatch(cached, pattern)
-        if might then
-            if will then
-                return self:readEntry(i, keys), i
-            else
-                local read = self:readEntry(i, "!") -- here would go pattern's all keys, but it is already known that the cached does not contain all of them.
-                might, will = arrayfile_entry.entriesMightMatch(read, pattern)
-                if will then
-                    return read, i
-                end
-            end
-        end
-    end
-    return nil, nil
-end
-
----find the first `count` entries that match the pattern
----@param pattern entry
----@param from integer
----@param to integer
----@param keys string[] | string | nil | false
----@param max integer?
----@return entry?
----@return integer?
-function arrayfile:findMany(pattern, from, to, keys, max)
-    keys = keys and arrayfile.splitArgString(keys)
-    local counter = 0
-    local entries = {}
-    ---@type integer?
-    local i = from
-    while i <= to do
-        local entry
-        entry, i = self:find(pattern, i --[[@as integer]], to, keys)
-        if entry and i then
-            entries[i] = entry
-            counter = counter + 1
-            if max and max <= counter then
-                break
-            end
-            i = i + 1
-        else
-            break
-        end
-    end
-    return entries
-end
+arrayfile.find = GenericDataFile.find
+arrayfile.findMany = GenericDataFile.findMany
 
 return arrayfile

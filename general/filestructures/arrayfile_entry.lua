@@ -47,9 +47,12 @@ end
 
 ---unpacks the entry with the given keys
 ---@param entry entry
----@param keys string[]
+---@param keys keysArg
 ---@return any ...
 function arrayfile_entry.unpackEntry(entry, keys)
+    if not keys then
+        return
+    end
     local unpacked = {}
     for i = 1, #keys do
         unpacked[i] = entry[keys[i]]
@@ -163,13 +166,31 @@ end
 
 ---splits a string by whitespace/punctuation
 ---if it's already split, do nothing and return it
----@param str string|string[]
+---@param str keysArg
 ---@return string[]
+---@overload fun(falsey:nil|false): nil|false
 function arrayfile_entry.splitArgString(str)
+    if not str then
+        return str
+    end
     if type(str) == "string" then
         return {Helper.splitString(str, "[%s%p]+", true)}
     else
         return str
+    end
+end
+
+---entry must be a subset of otherEntry.
+---return an entry that contains entry, but has less or equal holes
+---for use in write, so that one does not need to seek.
+---@param entry entry
+---@param otherEntry entry?
+---@return entry
+function arrayfile_entry.entryHolesFilled(entry, otherEntry)
+    if not otherEntry then
+        return entry
+    else
+        return otherEntry -- todo: smarter.
     end
 end
 

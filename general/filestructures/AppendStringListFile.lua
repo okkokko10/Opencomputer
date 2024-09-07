@@ -2,6 +2,7 @@ local Helper = require "Helper"
 local arrayfile_entry = require "arrayfile_entry"
 local arrayfile = require "arrayfile"
 local positionstream = require("positionstream")
+local GenericDataFile = require("GenericDataFile")
 
 ---@class AppendStringListFile
 ---@field filename string
@@ -195,33 +196,7 @@ function AppendStringListFile:getCached(index)
     return nil
 end
 
----formats an entry to a human-readable string
---- usually it is of the format `index:[key: value, ...]`
---- if it has attributes outside of what an entry is supposed to have, they are added to the end: format `index:[key: value, ...](unknownkey: value, ...)`
---- if index is unknown it is replaced with "-"
---- if entry is nil, returns "-:nil"
----@param entry entry?
----@return string
-function AppendStringListFile:formatEntry(entry) -- unchanged
-    if not entry then
-        return "-:nil"
-    end
-    local strings = {}
-    for _, keyname in ipairs(self.nameList) do
-        local value = entry[keyname]
-        if value then
-            strings[#strings + 1] = keyname .. ": " .. value
-        end
-    end
-    local other = {}
-    for key, value in pairs(entry) do
-        if not self.nameIndex[key] then
-            other[#other + 1] = key .. ": " .. value
-        end
-    end
-    return (entry["_i"] or "-") ..
-        ":[" .. table.concat(strings, ", ") .. "]" .. (#other > 0 and "(" .. table.concat(other, ",") .. ")" or "")
-end
+AppendStringListFile.formatEntry = GenericDataFile.formatEntry
 
 ---returns the position of the entry after this one
 ---@param entry entry
@@ -230,65 +205,7 @@ function AppendStringListFile:next(entry)
     return entry._i + #entry.text + 2
 end
 
----find the first entry that matches pattern
----@param pattern entry
----@param from integer
----@param to integer
----@param keys string[] | string | nil | false
----@return entry?
----@return integer?
-function AppendStringListFile:find(pattern, from, to, keys) -- changed slightly. should be pushed to be the generic definition
-    keys = keys and arrayfile_entry.splitArgString(keys)
-    local i = from
-    while i <= to do -- changed
-        local current = self:getCached(i)
-        local might, will = arrayfile_entry.entriesMightMatch(current, pattern)
-        if might then
-            if will then
-                return self:readEntry(i, keys), i
-            else
-                current = self:readEntry(i, "!") -- here would go pattern's all keys, but it is already known that the cached does not contain all of them.
-                might, will = arrayfile_entry.entriesMightMatch(current, pattern)
-                if will then
-                    return current, i
-                end
-            end
-        end
-        ---@cast current entry
-        i = self:next(current) -- the change
-    end
-    return nil, nil
-end
-
----find the first `count` entries that match the pattern
----@param pattern entry
----@param from integer
----@param to integer
----@param keys string[] | string | nil | false
----@param max integer?
----@return entry?
----@return integer?
-function AppendStringListFile:findMany(pattern, from, to, keys, max) -- changed slightly
-    keys = keys and arrayfile_entry.splitArgString(keys)
-    local counter = 0
-    local entries = {}
-    ---@type integer?
-    local i = from
-    while i <= to do
-        local entry
-        entry, i = self:find(pattern, i --[[@as integer]], to, keys)
-        if entry and i then
-            entries[i] = entry
-            counter = counter + 1
-            if max and max <= counter then
-                break
-            end
-            i = self:next(entry) -- the change
-        else
-            break
-        end
-    end
-    return entries
-end
+AppendStringListFile.find = GenericDataFile.find
+AppendStringListFile.findMany = GenericDataFile.findMany
 
 return AppendStringListFile
