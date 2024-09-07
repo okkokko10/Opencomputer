@@ -1,5 +1,6 @@
 local Helper = require "Helper"
 local arrayfile_entry = require("arrayfile_entry")
+local positionstream = require("positionstream")
 ---@alias buffer file*
 
 ---an entry in an arrayfile.
@@ -78,7 +79,7 @@ function arrayfile.make(filename, nameList, formats)
         if formats == "" then -- alternating on first line.
             formats = nil
         end
-        read_stream = arrayfile.positionstream.make(readf, file_offset)
+        read_stream = positionstream.make(readf, file_offset)
     else
     end
 
@@ -202,12 +203,12 @@ end
 
 function arrayfile:setRead(stream, offset)
     self:closeRead()
-    self.read_stream = self.positionstream.make(stream, offset)
+    self.read_stream = positionstream.make(stream, offset)
 end
 
 function arrayfile:setWrite(stream, offset)
     self:closeWrite()
-    self.write_stream = self.positionstream.make(stream, offset)
+    self.write_stream = positionstream.make(stream, offset)
 end
 
 function arrayfile:getRead()
@@ -219,79 +220,6 @@ end
 
 function arrayfile:getPosition(index, offset)
     return index * self.size + (offset or 0)
-end
-
----@class positionstream
----@field actualstream buffer
----@field position integer
----@field flushed boolean
----@field offset integer -- start at this position of the actualstream. use to place other data at the beginning.
----@field read_seek_max integer -- how far can read be used to seek. default 2000
-arrayfile.positionstream = {}
-arrayfile.positionstream.__index = arrayfile.positionstream
-
----create a positionstream from a stream.
----@param actualstream buffer
----@param offset? integer -- it's like the first `offset` bytes aren't even there
----@return positionstream
-function arrayfile.positionstream.make(actualstream, offset)
-    assert((offset or 0) >= 0)
-    -- position starts as math.huge so that the first seek must set absolute position
-    return setmetatable(
-        {actualstream = actualstream, position = math.huge, flushed = true, offset = offset or 0, read_seek_max = 2000},
-        arrayfile.positionstream
-    )
-end
-
-function arrayfile.positionstream:setOffset(offset)
-    assert(offset >= 0)
-    self.offset = offset
-end
-
----comment
----@param position integer
-function arrayfile.positionstream:seek(position)
-    if position == nil then
-        return
-    end
-    if self.position == position then
-        return
-    else
-        local distance = position - self.position
-        ---@diagnostic disable-next-line: undefined-field
-        if self.actualstream.mode.r and 0 < distance and distance < self.read_seek_max then -- todo: 1000 is arbitrary.
-            self:read(nil, distance) -- often just reading the stream is faster than seeking. not possible for write
-        else
-            local newpos = self.actualstream:seek("set", position + self.offset) - self.offset
-            self.position = newpos
-        end
-    end
-end
-
-function arrayfile.positionstream:write(position, str)
-    self:seek(position)
-    self.actualstream:write(str)
-    self.position = self.position + #str
-    self.flushed = false
-end
-
-function arrayfile.positionstream:read(position, length)
-    self:seek(position)
-    local out = self.actualstream:read(length)
-    local resultlength = #(out or "")
-    self.position = self.position + resultlength
-    if resultlength < length then
-        return out .. string.rep("\0", length - resultlength)
-    end
-    return out
-end
-
-function arrayfile.positionstream:flush()
-    self.flushed = true
-    return self.actualstream:flush()
-end
-function arrayfile.positionstream:close()
-    return self.actualstream:close()
 end
 
 ---readEntry, except it only retrieves the stated keys

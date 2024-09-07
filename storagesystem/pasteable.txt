@@ -43,7 +43,7 @@ ih.move(1, 1, 2, 10, 3)
 
 -- event.listen("tablet_use",function(_,tbl) print(serialization.serialize(tbl));computer.beep(200,0.1) end)
 
--- timer_last = 0; function timer() local temp = timer_last; timer_last = timer_func(); return timer_last - temp end; timer_func = computer.uptime
+timer_last = 0; function timer() local temp = timer_last; timer_last = timer_func(); return timer_last - temp ,math.floor((timer_last - temp)*20 + 0.5) end; timer_func = computer.uptime
 
 component.gpu.setActiveBuffer(1)
 
@@ -157,3 +157,14 @@ for i = 1, 1000 do local inp = r:read(1); if not inp then break end if inp == " 
 
 Stored = cachedarrayfile.make(lpath,"itemID amount prev next container","I3 I4 I3 I3 I1")
 Stored:writeEntries({[3]={itemID = 5, amount = 63, prev = 0, next = 0}})
+
+
+timer() for i = 1, 1000 do   end;print(timer())
+
+dr.readSector(1): 1024 / 16t
+dr.readSector(i): 1024 / 16t
+dr.readSector(1025-i): 1024 / 16t
+dr.readSector(1 + (i%4)*100): 1024 / 61
+
+
+

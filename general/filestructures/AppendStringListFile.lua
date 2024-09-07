@@ -1,6 +1,7 @@
 local Helper = require "Helper"
 local arrayfile_entry = require "arrayfile_entry"
 local arrayfile = require "arrayfile"
+local positionstream = require("positionstream")
 
 ---@class AppendStringListFile
 ---@field filename string
@@ -89,12 +90,12 @@ end
 
 function AppendStringListFile:setRead(stream, offset)
     self:closeRead()
-    self.read_stream = arrayfile.positionstream.make(stream, offset)
+    self.read_stream = positionstream.make(stream, offset)
 end
 
 function AppendStringListFile:setWrite(stream, offset)
     self:closeWrite()
-    self.write_stream = arrayfile.positionstream.make(stream, offset)
+    self.write_stream = positionstream.make(stream, offset)
 end
 
 function AppendStringListFile:getRead()
