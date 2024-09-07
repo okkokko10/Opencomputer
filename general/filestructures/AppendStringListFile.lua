@@ -3,13 +3,14 @@ local arrayfile_entry = require "arrayfile_entry"
 local arrayfile = require "arrayfile"
 local positionstream = require("positionstream")
 local GenericDataFile = require("GenericDataFile")
+local DirectDataFile = require("DirectDataFile")
 
----@class AppendStringListFile
+---@class AppendStringListFile: GenericDataFile, DirectDataFile
 ---@field filename string
 ---@field read_stream positionstream
 ---@field write_stream positionstream
 ---@field file_offset integer -- see [positionstream.offset]
-local AppendStringListFile = {}
+local AppendStringListFile = setmetatable({}, GenericDataFile)
 
 AppendStringListFile.__index = AppendStringListFile
 
@@ -17,6 +18,8 @@ AppendStringListFile.__index = AppendStringListFile
 ---added to file_offset
 ---the whole of the metadata string can be accessed with self:readEntry(-math.huge)
 AppendStringListFile.metadataSize = 128
+AppendStringListFile.nameList = {"text"}
+AppendStringListFile.nameIndex = {text = "text", _i = "_i"}
 
 ---creates a new AppendStringListFile object
 ---@param filename string
@@ -30,9 +33,6 @@ function AppendStringListFile.make(filename)
 
     return aslf
 end
-
-AppendStringListFile.nameList = {"text"}
-AppendStringListFile.nameIndex = {text = "text", _i = "_i"}
 
 ---sets entry metatable, and index
 ---note: does not actually set the entry.
@@ -62,49 +62,14 @@ function AppendStringListFile:encode(entry)
     return {{0, string.pack("I2", #text) .. text}}
 end
 
-function AppendStringListFile:openRead()
-    self:setRead(io.open(self.filename, "rb"), self.file_offset)
-    return self.read_stream
-end
-function AppendStringListFile:openWrite()
-    -- arrayfile.openWrite
-    self:setWrite(io.open(self.filename, "ab"), self.file_offset)
-    return self.write_stream
-end
-function AppendStringListFile:closeRead()
-    if self.read_stream then
-        self.read_stream:close()
-        self.read_stream = nil
-    end
-end
-function AppendStringListFile:closeWrite()
-    if self.write_stream then
-        self.write_stream:close()
-        self.write_stream = nil
-    end
-end
-
-function AppendStringListFile:close()
-    self:closeRead()
-    self:closeWrite()
-end
-
-function AppendStringListFile:setRead(stream, offset)
-    self:closeRead()
-    self.read_stream = positionstream.make(stream, offset)
-end
-
-function AppendStringListFile:setWrite(stream, offset)
-    self:closeWrite()
-    self.write_stream = positionstream.make(stream, offset)
-end
-
-function AppendStringListFile:getRead()
-    return self.read_stream or self:openRead() -- todo: this automatically opens a read. is this okay?
-end
-function AppendStringListFile:getWrite()
-    return self.write_stream or self:openWrite()
-end
+AppendStringListFile.openRead = DirectDataFile.openRead
+AppendStringListFile.openWrite = DirectDataFile.openWrite
+AppendStringListFile.closeRead = DirectDataFile.closeRead
+AppendStringListFile.closeWrite = DirectDataFile.closeWrite
+AppendStringListFile.setRead = DirectDataFile.setRead
+AppendStringListFile.setWrite = DirectDataFile.setWrite
+AppendStringListFile.getRead = DirectDataFile.getRead
+AppendStringListFile.getWrite = DirectDataFile.getWrite
 
 function AppendStringListFile:getPosition(index, offset)
     return index + (offset or 0)
@@ -112,59 +77,12 @@ end
 
 ---readEntry, except it only retrieves the stated keys
 ---if only some of the entry's values are cached, if only they are requested, the non-cached values won't be retrieved
----@param index integer
----@param keys nil|false|string|string[]
----@return entry entry
-function AppendStringListFile:readEntry(index, keys)
-    local entry = self:readEntryDirect(index)
-    return entry
-end
-
----do multiple readEntryValues at once.
----proper way to query values.
---- {[3]="a b c",[5]="d c"} => {[3]={a=?,b=?,c=?},[5]={d=?,c=?}}
----@param indices_keys table<integer,true|string|string[]>
----@return table<integer,entry> indices_entries
-function AppendStringListFile:readEntries(indices_keys)
-    local indices_entries = {}
-    for index, keys in Helper.sortedpairs(indices_keys) do
-        indices_entries[index] = self:readEntry(index, keys)
-    end
-    return indices_entries
-end
-
----calls self:writeEntry(index,value) on all index-value pairs, in ascending order.
----writes entries. in a sense updates this with indices_entries.
----nil keeps old value
----@param indices_entries table<integer,table>
-function AppendStringListFile:writeEntries(indices_entries)
-    for index, entry in Helper.sortedpairs(indices_entries) do
-        self:writeEntry(index, entry)
-    end
-end
-
----writes entry to index. if some values are blank, they are left as is
 ---@param position integer
----@param entry table
-function AppendStringListFile:writeEntry(position, entry)
-    if position == -math.huge then
-        if entry.metadata then
-            assert(#entry.metadata <= self.metadataSize, entry.metadata)
-            self:getWrite():write(-self.metadataSize, entry.metadata)
-        end
-        return
-    end
-    local encoded = self:encode(entry)
-    for i = 1, #encoded do
-        self:getWrite():write(self:getPosition(position, encoded[i][1]), encoded[i][2])
-    end
-end
-
----@param position integer
+---@param keys keysArg
 ---@return entry entry
-function AppendStringListFile:readEntryDirect(position)
+function AppendStringListFile:readEntry(position, keys)
     if position == -math.huge then
-        return self:getRead():read(-self.metadataSize, self.metadataSize)
+        return {metadata = self:getRead():read(-self.metadataSize, self.metadataSize), _i = -math.huge}
     end
     local reader = self:getRead()
     local length = string.unpack("I2", reader:read(position, 2))
@@ -172,31 +90,7 @@ function AppendStringListFile:readEntryDirect(position)
     return self:decode(text, position)
 end
 
----gets the metadata string, of length `self.metadataSize`
----@return string
-function AppendStringListFile:readMetadata() -- unchanged
-    return self:readEntry(-math.huge).metadata
-end
----comment
----@param string string
----@return nil
-function AppendStringListFile:writeMetadata(string) -- unchanged
-    local metadata = string.sub(string, 1, self.metadataSize)
-    local padding = self.metadataSize - #metadata
-    if padding > 0 then
-        metadata = metadata .. string.rep("\0", padding - 1) .. "\n"
-    end
-    return self:writeEntry(-math.huge, {metadata = metadata})
-end
-
----get a cached entry, if caching exists. otherwise get nothing
----@param index integer
----@return entry?
-function AppendStringListFile:getCached(index)
-    return nil
-end
-
-AppendStringListFile.formatEntry = GenericDataFile.formatEntry
+AppendStringListFile.writeEntry = arrayfile.writeEntry
 
 ---returns the position of the entry after this one
 ---@param entry entry
@@ -204,8 +98,5 @@ AppendStringListFile.formatEntry = GenericDataFile.formatEntry
 function AppendStringListFile:next(entry)
     return entry._i + #entry.text + 2
 end
-
-AppendStringListFile.find = GenericDataFile.find
-AppendStringListFile.findMany = GenericDataFile.findMany
 
 return AppendStringListFile

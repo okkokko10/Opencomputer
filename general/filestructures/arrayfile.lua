@@ -2,6 +2,7 @@ local Helper = require "Helper"
 local arrayfile_entry = require("arrayfile_entry")
 local positionstream = require("positionstream")
 local GenericDataFile = require("GenericDataFile")
+local DirectDataFile = require("DirectDataFile")
 ---@alias buffer file*
 
 ---an entry in an arrayfile.
@@ -36,7 +37,7 @@ call tree:
 
 ```
 ]]
----@class arrayfile: GenericDataFile
+---@class arrayfile: GenericDataFile, DirectDataFile
 ---@field filename string
 ---@field nameIndex table<string,integer|string> -- from external to internal entry key names
 ---@field nameList string[] -- list of entry key names
@@ -174,55 +175,18 @@ function arrayfile:encode(entry)
     return pairs
 end
 
-function arrayfile:openRead()
-    self:setRead(io.open(self.filename, "rb"), self.file_offset)
-    return self.read_stream
-end
-function arrayfile:openWrite()
-    self:setWrite(io.open(self.filename, "ab"), self.file_offset)
-    return self.write_stream
-end
-function arrayfile:closeRead()
-    if self.read_stream then
-        self.read_stream:close()
-        self.read_stream = nil
-    end
-end
-function arrayfile:closeWrite()
-    if self.write_stream then
-        self.write_stream:close()
-        self.write_stream = nil
-    end
-end
-
-arrayfile.close = GenericDataFile.close
-
-function arrayfile:setRead(stream, offset)
-    self:closeRead()
-    self.read_stream = positionstream.make(stream, offset)
-end
-
-function arrayfile:setWrite(stream, offset)
-    self:closeWrite()
-    self.write_stream = positionstream.make(stream, offset)
-end
-
-function arrayfile:getRead()
-    return self.read_stream or self:openRead() -- todo: this automatically opens a read. is this okay?
-end
-function arrayfile:getWrite()
-    return self.write_stream or self:openWrite()
-end
+arrayfile.openRead = DirectDataFile.openRead
+arrayfile.openWrite = DirectDataFile.openWrite
+arrayfile.closeRead = DirectDataFile.closeRead
+arrayfile.closeWrite = DirectDataFile.closeWrite
+arrayfile.setRead = DirectDataFile.setRead
+arrayfile.setWrite = DirectDataFile.setWrite
+arrayfile.getRead = DirectDataFile.getRead
+arrayfile.getWrite = DirectDataFile.getWrite
 
 function arrayfile:getPosition(index, offset)
     return index * self.size + (offset or 0)
 end
-
-arrayfile.readEntryFancy = GenericDataFile.readEntryFancy
-
-arrayfile.readEntries = GenericDataFile.readEntries
-
-arrayfile.writeEntries = GenericDataFile.writeEntries
 
 ---writes entry to index. if some values are blank, they are left as is
 ---@param index integer
@@ -252,18 +216,11 @@ function arrayfile:readEntry(index, keys)
     return self:decode(data, index)
 end
 
-arrayfile.getCached = GenericDataFile.getCached
-
-arrayfile.formatEntry = GenericDataFile.formatEntry
-
 ---returns the position of the entry after this one
 ---@param entry entry
 ---@return integer
 function arrayfile:next(entry)
     return entry._i + 1
 end
-
-arrayfile.find = GenericDataFile.find
-arrayfile.findMany = GenericDataFile.findMany
 
 return arrayfile
