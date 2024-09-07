@@ -27,6 +27,7 @@ local ItemHashes =
 
 slotdatabase.Slots = Slots
 slotdatabase.ItemData = ItemData
+--- used to search for items.
 slotdatabase.ItemHashes = ItemHashes
 
 slotdatabase.arrayNames = {"Slots", "ItemData", "ItemHashes"}
@@ -260,11 +261,17 @@ end
 ---adds a new item.
 ---@param infoPosition integer
 ---@return integer itemID
-function slotdatabase:addNewItem(infoPosition)
+function slotdatabase:addNewItemData(infoPosition)
     local size = self.getSize(self.ItemData)
     self.ItemData:writeEntry(size, {amount = 0, top = 0, bottom = 0, infoPosition = infoPosition})
     self.setSize(self.ItemData, size + 1)
     return size
+end
+---makes an item hash at the index.
+---@param item Item -- todo
+---@param index integer
+function slotdatabase:addNewItemHash(item, index)
+    self.ItemHashes:writeEntry(index, self:makeItemHash(item))
 end
 
 ---adds new slots filled with air_itemID. these will be filled last. air's bottom is larger, unlike normal.
@@ -304,6 +311,8 @@ function slotdatabase:addSlots(containerID, air_itemID, count)
     return start, size - 1
 end
 
+--#region makeItemHash
+
 ---comment
 ---@param modname string
 ---@return integer
@@ -333,8 +342,23 @@ function slotdatabase:make_ItemHashes_dataHash(item)
     return tonumber(string.sub(item.hash, 1, 2), 16) & 0xFF
 end
 
+---makes an ItemHashes entry from an item.
+---@param item Item
 function slotdatabase:makeItemHash(item)
-    self:make_ItemHashes_modIDhash(item) -- todo
+    return {
+        -- todo
+        modIDhash = self:make_ItemHashes_modIDhash(item),
+        nameLetters = self:make_ItemHashes_nameLetters(item),
+        charSum = self:make_ItemHashes_charSum(item),
+        meta = self:make_ItemHashes_meta(item),
+        labelLetters = self:make_ItemHashes_labelLetters(item),
+        dataHash = self:make_ItemHashes_dataHash(item)
+    }
+end
+
+--#endregion
+
+function slotdatabase:addNewItem(item)
 end
 
 return slotdatabase

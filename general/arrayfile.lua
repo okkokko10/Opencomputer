@@ -56,17 +56,7 @@ arrayfile.__index = arrayfile
 ---the whole of the metadata string can be accessed with self:readEntry(-math.huge)
 arrayfile.metadataSize = 128
 
----splits a string by whitespace/punctuation
----if it's already split, do nothing and return it
----@param str string|string[]
----@return string[]
-function arrayfile.splitArgString(str)
-    if type(str) == "string" then
-        return {Helper.splitString(str, "[%s%p]+", true)}
-    else
-        return str
-    end
-end
+arrayfile.splitArgString = arrayfile_entry.splitArgString
 
 ---creates a new arrayfile object
 ---@param filename string
@@ -157,6 +147,7 @@ function arrayfile:decode(data, index)
 end
 
 ---if some indices are nil, then they are left as they are
+---sequence of (offset,bytes), where if an entry starts at position x, bytes should be written starting from x+offset
 ---@param entry entry
 ---@return [integer,string][] offset-bytestring
 function arrayfile:encode(entry)

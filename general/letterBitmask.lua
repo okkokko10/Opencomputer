@@ -23,7 +23,7 @@ end
 function letterBitmask.make(text)
     local out = 0
     for i = 1, #text do
-        out = out | letter_bits[text:byte(i)]
+        out = out | (letter_bits[text:byte(i)] or 0)
     end
     return out
 end

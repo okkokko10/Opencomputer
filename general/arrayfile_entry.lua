@@ -1,3 +1,4 @@
+local Helper = require "Helper"
 local arrayfile_entry = {}
 
 function arrayfile_entry.makeEntryMetatable(arrf)
@@ -157,6 +158,18 @@ function arrayfile_entry.updateEntrySubsetCheck(targetEntry, newValues)
         else
             targetEntry[i] = value
         end
+    end
+end
+
+---splits a string by whitespace/punctuation
+---if it's already split, do nothing and return it
+---@param str string|string[]
+---@return string[]
+function arrayfile_entry.splitArgString(str)
+    if type(str) == "string" then
+        return {Helper.splitString(str, "[%s%p]+", true)}
+    else
+        return str
     end
 end
 

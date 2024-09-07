@@ -15,6 +15,8 @@ local cachedarrayfile = setmetatable({}, arrayfile)
 
 cachedarrayfile.__index = cachedarrayfile
 
+cachedarrayfile.super = arrayfile
+
 ---creates a new cachedarrayfile object
 ---@param filename string
 ---@param nameList? string[] |string
@@ -126,7 +128,7 @@ function cachedarrayfile:flushWrites(saveToReadcache)
         if saveToReadcache then
             self:setReadCacheUnlessExists(index, entry)
         end
-        arrayfile.writeEntry(self, index, arrayfile.entryHolesFilled(entry, self:getReadCache(index))) -- since a readcache element is up to date with writecache when it exists, this might avoid unnecessary seeking
+        self.super.writeEntry(self, index, self.super.entryHolesFilled(entry, self:getReadCache(index))) -- since a readcache element is up to date with writecache when it exists, this might avoid unnecessary seeking
     end
     self.writecache = {}
     self.write_current_size = 0
@@ -249,6 +251,7 @@ end
 BranchCachedArrayFile =
     setmetatable(
     {
+        isBranch = true,
         readcache = false, -- hopefully triggers errors when this is accessed (it's not supposed to be)
         __index = BranchCachedArrayFile,
         getCached = function(self, index)
@@ -275,6 +278,9 @@ BranchCachedArrayFile =
         writeEntries = cachedarrayfile.writeEntries,
         updateReadCache = function(self, index, value)
             self.parent:updateReadCache(index, value) -- allowed for the sake of assume update
+        end,
+        flushWrites = function(self, saveToReadcache)
+            return nil, "cannot flush branch"
         end
     },
     {
