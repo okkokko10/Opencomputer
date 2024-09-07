@@ -137,14 +137,14 @@ end
 
 ---gets the first 4 bytes of metadata as a uint
 ---exclusive end
----@param arrf arrayfile
+---@param arrf GenericDataFile
 ---@return integer
 function slotdatabase.getSize(arrf)
     return select(1, string.unpack("I4", arrf:readMetadata()))
 end
 
 ---sets the first 4 bytes of metadata as a uint
----@param arrf arrayfile
+---@param arrf GenericDataFile
 ---@param size integer
 function slotdatabase.setSize(arrf, size)
     string.gsub(arrf:readMetadata(), "^....", string.pack("I4", size), 1)

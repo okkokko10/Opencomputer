@@ -49,7 +49,7 @@ call tree:
 ---@field read_stream positionstream
 ---@field write_stream positionstream
 ---@field file_offset integer -- see [positionstream.offset]
-local arrayfile = {}
+local arrayfile = setmetatable({}, GenericDataFile)
 
 arrayfile.__index = arrayfile
 
@@ -195,10 +195,7 @@ function arrayfile:closeWrite()
     end
 end
 
-function arrayfile:close()
-    self:closeRead()
-    self:closeWrite()
-end
+arrayfile.close = GenericDataFile.close
 
 function arrayfile:setRead(stream, offset)
     self:closeRead()

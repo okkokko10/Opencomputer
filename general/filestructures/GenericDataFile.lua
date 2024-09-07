@@ -2,10 +2,9 @@ local arrayfile_entry = require "arrayfile_entry"
 local Helper = require "Helper"
 
 ---@class GenericDataFile
----@field nameIndex table<string,integer|string> -- from external to internal entry key names
----@field nameList string[] -- list of entry key names
----@field metadataSize integer
 local GenericDataFile = {}
+
+GenericDataFile.__index = GenericDataFile
 
 ---@alias keysArg nil|false|string|string[] | "!"
 
@@ -41,7 +40,36 @@ function GenericDataFile:getCached(index)
     return nil -- default
 end
 
+function GenericDataFile:closeRead()
+    -- default
+end
+function GenericDataFile:closeWrite()
+    -- default
+end
+
+---@return table<string,integer|string> -- from external to internal entry key names
+function GenericDataFile:getNameIndex()
+    ---@diagnostic disable-next-line: undefined-field
+    return self.nameIndex or error()
+end
+
+---@return string[] -- list of entry key names
+function GenericDataFile:getNameList()
+    ---@diagnostic disable-next-line: undefined-field
+    return self.nameList or error()
+end
+---@return integer
+function GenericDataFile:getMetadataSize()
+    ---@diagnostic disable-next-line: undefined-field
+    return self.metadataSize or error()
+end
+
 --#endregion abstract
+
+function GenericDataFile:close()
+    self:closeRead()
+    self:closeWrite()
+end
 
 ---readEntryValues, but additionally returns its values in the order given in keys
 ---@param index integer
@@ -87,8 +115,9 @@ end
 ---@param string string
 ---@return nil
 function GenericDataFile:writeMetadata(string)
-    local metadata = string.sub(string, 1, self.metadataSize)
-    local padding = self.metadataSize - #metadata
+    local metadataSize = self:getMetadataSize()
+    local metadata = string.sub(string, 1, metadataSize)
+    local padding = metadataSize - #metadata
     if padding > 0 then
         metadata = metadata .. string.rep("\0", padding - 1) .. "\n"
     end
@@ -107,15 +136,16 @@ function GenericDataFile:formatEntry(entry)
         return "-:nil"
     end
     local strings = {}
-    for _, keyname in ipairs(self.nameList or {}) do
+    for _, keyname in ipairs(self:getNameList() or {}) do
         local value = entry[keyname]
         if value then
             strings[#strings + 1] = keyname .. ": " .. value
         end
     end
     local other = {}
+    local nameIndex = self:getNameIndex()
     for key, value in pairs(entry) do
-        if not (self.nameIndex and self.nameIndex[key]) then
+        if not (nameIndex and nameIndex[key]) then
             other[#other + 1] = key .. ": " .. value
         end
     end
