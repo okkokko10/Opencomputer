@@ -770,3 +770,6 @@ label letter 1-byte bitmask     -- the 0000 0000 might be underused. maybe items
 1-byte: itemdata hash first byte
 6 bytes
 meta's most significant bit could encode whether there's been a hash collision
+
+todo: datafile editor
+  includes jumping to foreign keys

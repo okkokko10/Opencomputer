@@ -29,6 +29,15 @@ local ItemHashes =
 
 local FullUniqueItem = CachedDataFile.make(AppendStringListFile.make("/usr/storage/uniqueitems.listfile"))
 
+-- local SlotLock = SparseDataFile
+local Containers =
+    cachedarrayfile.make(
+    "/usr/storage/containers.arrayfile",
+    "nodeparent: I2, x: i4, y: i4, z: i4, side: I1, isExternal: B, sizeMultiplier: I4, start: I3, stop: I3"
+) -- stop is exclusive
+
+local Nodes = cachedarrayfile.make("/usr/storage/nodes.arrayfile", "nodeparent: I2, x: i4, y: i4, z: i4")
+
 -- local Mods = CachedDataFile.make(AppendStringListFile.make("/usr/storage/mods.listfile"), math.huge, math.huge)
 local Mods = cachedarrayfile.make("/usr/storage/mods.arrayfile", "modname: c20")
 ---modname limited to 20 characters
@@ -46,7 +55,8 @@ slotdatabase.datafiles = {
     ItemData = ItemData,
     ItemHashes = ItemHashes,
     Mods = Mods,
-    FullUniqueItem = FullUniqueItem
+    FullUniqueItem = FullUniqueItem,
+    Containers = Containers
 }
 
 ---overwrite the entry at index, setting its itemID and amount, and making it the new topSlot
@@ -265,7 +275,7 @@ end
 ---@param air_itemID integer
 ---@param count integer
 ---@return integer start -- inclusive
----@return integer finish -- inclusive
+---@return integer stop -- exclusive
 function slotdatabase:addSlots(containerID, air_itemID, count)
     assert(count > 0, "container must have positive size")
     local size = self.getSize(self.datafiles.Slots)
@@ -294,7 +304,7 @@ function slotdatabase:addSlots(containerID, air_itemID, count)
     end
     self.datafiles.ItemData:writeEntry(air_itemID, newAir)
     self.setSize(self.datafiles.Slots, size)
-    return start, size - 1
+    return start, size
 end
 
 ---adds a new modname to the end of Mods, and returns its position
@@ -411,6 +421,26 @@ function slotdatabase:findItem(item, fromExclusive, makeNew)
         local itemRepr = self.datafiles.FullUniqueItem:readEntry(data.info).text
         return itemID, data, itemRepr
     end
+end
+
+--"nodeparent: I2, x: i4, y: i4, z: i4, side: I1, isExternal: B, sizeMultiplier: I4, start: I3, stop: I3"
+function slotdatabase:addContainer(airID, size, nodeparent, x, y, z, side, isExternal, sizeMultiplier)
+    local containerID =
+        self.addEntryToEnd(
+        self.datafiles.Containers,
+        {
+            nodeparent = nodeparent,
+            x = math.floor(x),
+            y = math.floor(y),
+            z = math.floor(z),
+            side = side,
+            isExternal = isExternal and 1 or 0,
+            sizeMultiplier = sizeMultiplier
+        }
+    )
+    local start, stop = self:addSlots(containerID, airID, size)
+    self.datafiles.Containers:writeEntry(containerID, {start = start, stop = stop})
+    return containerID
 end
 
 return slotdatabase

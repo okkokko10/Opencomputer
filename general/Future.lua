@@ -23,6 +23,8 @@ Future.list = setmetatable({}, {__mode = "k"})
 
 Future.__index = Future
 
+Future.DEBUG = false
+
 --#region debugging
 
 function Future:__tostring()
@@ -86,7 +88,9 @@ end
 ---@param future Future
 ---@return T self
 function Future:setParent(future)
-  self.parents = {future} -- todo: also adds to the parent's children.
+  if Future.DEBUG then
+    self.parents = {future} -- todo: also adds to the parent's children.
+  end
   return self
 end
 ---for debugging, marks the futures that this waits on.
@@ -96,7 +100,9 @@ end
 ---@param futures Future[]
 ---@return T self
 function Future:setParents(futures)
-  self.parents = futures
+  if Future.DEBUG then
+    self.parents = futures
+  end
   return self
 end
 
@@ -105,9 +111,11 @@ end
 ---@param self T
 ---@return T self
 function Future:markJoin()
-  local current = Future.current()
-  if current then
-    current.joined[#current.joined + 1] = self
+  if Future.DEBUG then
+    local current = Future.current()
+    if current then
+      current.joined[#current.joined + 1] = self
+    end
   end
   return self
 end
