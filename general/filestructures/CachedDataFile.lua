@@ -143,10 +143,11 @@ function CachedDataFile:readEntry(index, keys)
 end
 
 ---returns the position of the entry after this one
----@param entry entry
+---@param index integer
+---@param entry entry?
 ---@return integer
-function CachedDataFile:next(entry)
-    return self.base:next(entry)
+function CachedDataFile:next(index, entry)
+    return self.base:next(index, entry)
 end
 
 function CachedDataFile:closeRead()

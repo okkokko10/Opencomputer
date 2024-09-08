@@ -93,10 +93,11 @@ end
 AppendStringListFile.writeEntry = arrayfile.writeEntry
 
 ---returns the position of the entry after this one
+---@param index integer
 ---@param entry entry
 ---@return integer
-function AppendStringListFile:next(entry)
-    return entry._i + #entry.text + 2
+function AppendStringListFile:next(index, entry)
+    return index + #entry.text + 2
 end
 
 return AppendStringListFile

@@ -20,9 +20,10 @@ function GenericDataFile:readEntry(index, keys)
 end
 
 ---returns the position of the entry after this one
----@param entry entry
+---@param index integer
+---@param entry entry?
 ---@return integer
-function GenericDataFile:next(entry)
+function GenericDataFile:next(index, entry)
     error("unimplemented")
 end
 
@@ -154,7 +155,7 @@ function GenericDataFile:formatEntry(entry)
 end
 
 ---find the first entry that matches pattern
----@param pattern entry
+---@param pattern table
 ---@param from integer
 ---@param to integer
 ---@param keys keysArg
@@ -178,13 +179,13 @@ function GenericDataFile:find(pattern, from, to, keys)
             end
         end
         ---@cast current entry
-        i = self:next(current) -- the change
+        i = self:next(i, current) -- the change
     end
     return nil, nil
 end
 
 ---find the first `count` entries that match the pattern
----@param pattern entry
+---@param pattern table
 ---@param from integer
 ---@param to integer
 ---@param keys keysArg
@@ -206,11 +207,26 @@ function GenericDataFile:findMany(pattern, from, to, keys, max)
             if max and max <= counter then
                 break
             end
-            i = self:next(entry)
+            i = self:next(i, entry)
         else
             break
         end
     end
     return entries, counter
 end
+
+---makes a branch, which can be commited or rolled back.
+---@return CachedDataFile
+function GenericDataFile:branch()
+    return require("CachedDataFile").make(self, math.huge, 10)
+    -- -- todo
+    -- return setmetatable(
+    --     {
+    --         parent = self,
+    --         writecache = {}
+    --     },
+    --     BranchCachedDataFile
+    -- )
+end
+
 return GenericDataFile

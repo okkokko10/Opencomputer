@@ -1,7 +1,10 @@
 local cachedarrayfile = require("cachedarrayfile")
+local Database = require("Database")
+local CachedDataFile = require("CachedDataFile")
+local AppendStringListFile = require("AppendStringListFile")
 
----@class slotdatabase
-local slotdatabase = {}
+---@class slotdatabase: Database
+local slotdatabase = setmetatable({}, Database)
 
 ---@class Slots: cachedarrayfile
 local Slots =
@@ -17,20 +20,34 @@ local ItemData =
     "amount: I4, top: I3, bottom: I3, info: I4, stacksize: I1"
 )
 
+--- used to search for items.
 local ItemHashes =
     cachedarrayfile.make(
-    "/user/storage/itemHashes.arrayfile",
+    "/usr/storage/itemHashes.arrayfile",
     "modIDhash: I1, nameLetters I1, charSum I1, meta I1, labelLetters I1 dataHash I1"
 )
 
--- local Mods = CachedListFile
+local FullUniqueItem = CachedDataFile.make(AppendStringListFile.make("/usr/storage/uniqueitems.listfile"))
 
-slotdatabase.Slots = Slots
-slotdatabase.ItemData = ItemData
---- used to search for items.
-slotdatabase.ItemHashes = ItemHashes
+-- local Mods = CachedDataFile.make(AppendStringListFile.make("/usr/storage/mods.listfile"), math.huge, math.huge)
+local Mods = cachedarrayfile.make("/usr/storage/mods.arrayfile", "modname: c20")
+---modname limited to 20 characters
+---@param modname string
+---@return string
+function slotdatabase:formatModname(modname)
+    if #modname > 20 then
+        modname = string.sub(modname, 1, 10) .. string.sub(modname, -10, -1)
+    end
+    return string.pack("c20", modname)
+end
 
-slotdatabase.arrayNames = {"Slots", "ItemData", "ItemHashes"}
+slotdatabase.datafiles = {
+    Slots = Slots,
+    ItemData = ItemData,
+    ItemHashes = ItemHashes,
+    Mods = Mods,
+    FullUniqueItem = FullUniqueItem
+}
 
 ---overwrite the entry at index, setting its itemID and amount, and making it the new topSlot
 ---@param index integer
@@ -40,12 +57,15 @@ slotdatabase.arrayNames = {"Slots", "ItemData", "ItemHashes"}
 ---@return integer|nil new_itemOut_topSlot
 ---@return integer|nil new_itemOut_bottomSlot
 ---@return integer new_itemIn_topSlot
+---@return integer itemOut_itemID
 function Slots:changeItem(index, itemIn_itemID, itemIn_topSlot, inAmount)
     local new_itemOut_topSlot
     local new_itemOut_bottomSlot
     local new_itemIn_topSlot
+    local itemOut_itemID
 
-    local oldItem = self:readEntry(index, "next prev")
+    local oldItem = self:readEntry(index, "next prev itemID")
+    itemOut_itemID = oldItem.itemID
     local changes = {}
     self:assume(oldItem.prev, {next = index, itemID = oldItem.itemID})
     if oldItem.prev ~= 0 then
@@ -70,8 +90,10 @@ function Slots:changeItem(index, itemIn_itemID, itemIn_topSlot, inAmount)
     self:writeEntries(changes)
 
     new_itemIn_topSlot = index
-    return new_itemOut_topSlot, new_itemOut_bottomSlot, new_itemIn_topSlot
+    return new_itemOut_topSlot, new_itemOut_bottomSlot, new_itemIn_topSlot, itemOut_itemID
 end
+
+--#region eventual
 
 local eventual = require("eventual")
 
@@ -119,6 +141,7 @@ function Slots:changeItemEventual(index, itemIn_itemID, itemIn_topSlot, inAmount
     new_itemIn_topSlot = index
     return new_itemOut_topSlot, new_itemOut_bottomSlot, new_itemIn_topSlot
 end
+--#endregion eventual
 
 function Slots:checkAssertion(index)
     if index == 0 then
@@ -150,56 +173,15 @@ function slotdatabase.setSize(arrf, size)
     string.gsub(arrf:readMetadata(), "^....", string.pack("I4", size), 1)
 end
 
----todo: a branch of the database, with its own writes that can be commited or rolled back.
----@class Transaction: slotdatabase
----@field database slotdatabase
--- -@field suppressor1  { finish:  fun() }
--- -@field suppressor2  { finish:  fun() }
-local Transaction = {}
-function Transaction:commit()
-    --- temporary:
-    -- self.suppressor1:finish()
-    -- self.suppressor2:finish()
-
-    for _, name in ipairs(self.arrayNames) do
-        self[name]:commit()
-    end
-
-    return self.database
-end
-function Transaction:rollback()
-    for _, name in ipairs(self.arrayNames) do
-        self[name]:rollback()
-    end
-
-    -- todo: unimplemented
-    return self.database
-end
-
----creates a Transaction.
----@param database slotdatabase
----@return slotdatabase|Transaction
-function Transaction.create(database)
-    local transaction = {
-        database = database,
-        commit = Transaction.commit,
-        rollback = Transaction.rollback
-    }
-    for _, name in ipairs(database.arrayNames) do
-        transaction[name] = database[name]:branch()
-    end
-
-    local tr = setmetatable(transaction, {__index = database})
-
-    --temporary. doesn't even work properly, since it also takes old flushes
-    -- tr.suppressor1 = database.Slots:suppressFlush()
-    -- tr.suppressor2 = database.ItemData:suppressFlush()
-
-    return tr
-end
-
-function slotdatabase:beginTransaction()
-    return Transaction.create(self)
+---adds a new entry to the end of datafile, and returns its index
+---@param datafile GenericDataFile
+---@param entry table
+---@return integer
+function slotdatabase.addEntryToEnd(datafile, entry)
+    local size = slotdatabase.getSize(datafile)
+    datafile:writeEntry(size, entry)
+    slotdatabase.setSize(datafile, datafile:next(size, entry))
+    return size
 end
 
 ---todo: give abstract orders that ask to use a value that is fetched later.
@@ -212,10 +194,11 @@ end
 ---@param out_itemID integer
 ---@param amount integer
 function slotdatabase:changeItem(index, in_itemID, out_itemID, amount)
-    local newItem = self.ItemData:readEntry(in_itemID, "top bottom")
-    local out_top, out_bottom, in_top = self.Slots:changeItem(index, in_itemID, newItem.top, amount)
-    self.ItemData:writeEntry(in_itemID, {top = in_top, bottom = (newItem.bottom == 0) and in_top or nil})
-    self.ItemData:writeEntry(out_itemID, {top = out_top, bottom = out_bottom})
+    local newItem = self.datafiles.ItemData:readEntry(in_itemID, "top bottom")
+    local out_top, out_bottom, in_top, out_itemID =
+        Slots.changeItem(self.datafiles.Slots, index, in_itemID, newItem.top, amount)
+    self.datafiles.ItemData:writeEntry(in_itemID, {top = in_top, bottom = (newItem.bottom == 0) and in_top or nil})
+    self.datafiles.ItemData:writeEntry(out_itemID, {top = out_top, bottom = out_bottom})
 end
 
 ---updates the item data at the slot accordingly. Handles updating total item amounts.
@@ -225,16 +208,16 @@ end
 ---@param itemID integer
 ---@param amount integer
 function slotdatabase:setItem(index, itemID, amount)
-    local oldSlot = self.Slots:readEntry(index, "itemID amount")
+    local oldSlot = self.datafiles.Slots:readEntry(index, "itemID amount")
     local old_itemID = oldSlot.itemID
     local old_amount = oldSlot.amount
     if itemID == old_itemID then
-        self.Slots:writeEntry(index, {amount = amount})
-        local old_new_total_amount = self.ItemData:readEntry(itemID, "amount").amount
-        self.ItemData:writeEntry(itemID, {amount = old_new_total_amount + amount - old_amount})
+        self.datafiles.Slots:writeEntry(index, {amount = amount})
+        local old_new_total_amount = self.datafiles.ItemData:readEntry(itemID, "amount").amount
+        self.datafiles.ItemData:writeEntry(itemID, {amount = old_new_total_amount + amount - old_amount})
     else
         local old_total_amounts =
-            self.ItemData:readEntries(
+            self.datafiles.ItemData:readEntries(
             {
                 [itemID] = "amount",
                 [old_itemID] = "amount"
@@ -243,7 +226,7 @@ function slotdatabase:setItem(index, itemID, amount)
         local old_new_total_amount = old_total_amounts[itemID].amount
         local old_old_total_amount = old_total_amounts[old_itemID].amount
         self:changeItem(index, itemID, old_itemID, amount)
-        self.ItemData:writeEntries(
+        self.datafiles.ItemData:writeEntries(
             {
                 [itemID] = {amount = old_new_total_amount + amount},
                 [old_itemID] = {amount = old_old_total_amount - old_amount}
@@ -253,25 +236,28 @@ function slotdatabase:setItem(index, itemID, amount)
 end
 
 function slotdatabase:flush()
-    for _, name in ipairs(self.arrayNames) do
-        self[name]:flushWrites(true)
+    for _, datafile in pairs(self.datafiles) do
+        datafile:flushWrites(true)
     end
 end
 
 ---adds a new item.
 ---@param infoPosition integer
 ---@return integer itemID
-function slotdatabase:addNewItemData(infoPosition)
-    local size = self.getSize(self.ItemData)
-    self.ItemData:writeEntry(size, {amount = 0, top = 0, bottom = 0, infoPosition = infoPosition})
-    self.setSize(self.ItemData, size + 1)
+function slotdatabase:addNewItemData(infoPosition, stacksize)
+    local size = self.getSize(self.datafiles.ItemData)
+    self.datafiles.ItemData:writeEntry(
+        size,
+        {amount = 0, top = 0, bottom = 0, info = infoPosition, stacksize = stacksize}
+    )
+    self.setSize(self.datafiles.ItemData, size + 1)
     return size
 end
 ---makes an item hash at the index.
 ---@param item Item -- todo
 ---@param index integer
 function slotdatabase:addNewItemHash(item, index)
-    self.ItemHashes:writeEntry(index, self:makeItemHash(item))
+    self.datafiles.ItemHashes:writeEntry(index, self:makeItemHash(item))
 end
 
 ---adds new slots filled with air_itemID. these will be filled last. air's bottom is larger, unlike normal.
@@ -282,13 +268,13 @@ end
 ---@return integer finish -- inclusive
 function slotdatabase:addSlots(containerID, air_itemID, count)
     assert(count > 0, "container must have positive size")
-    local size = self.getSize(self.Slots)
+    local size = self.getSize(self.datafiles.Slots)
     local start = size
-    local air = self.ItemData:readEntry(air_itemID, "amount bottom")
-    self.Slots:writeEntry(air.bottom, {prev = size})
+    local air = self.datafiles.ItemData:readEntry(air_itemID, "amount bottom")
+    self.datafiles.Slots:writeEntry(air.bottom, {prev = size})
     local nex = air.bottom
     for i = 1, count do
-        self.Slots:writeEntry(
+        self.datafiles.Slots:writeEntry(
             size,
             {
                 itemID = air_itemID,
@@ -301,52 +287,78 @@ function slotdatabase:addSlots(containerID, air_itemID, count)
         nex = size
         size = size + 1
     end
-    self.Slots:writeEntry(nex, {prev = 0}) -- undo last for loop's prev
+    self.datafiles.Slots:writeEntry(nex, {prev = 0}) -- undo last for loop's prev
     local newAir = {bottom = nex, amount = air.amount + count}
     if air.bottom == 0 then
         newAir.top = start
     end
-    self.ItemData:writeEntry(air_itemID, newAir)
-    self.setSize(self.Slots, size)
+    self.datafiles.ItemData:writeEntry(air_itemID, newAir)
+    self.setSize(self.datafiles.Slots, size)
     return start, size - 1
+end
+
+---adds a new modname to the end of Mods, and returns its position
+---@param modname any
+---@return integer
+function slotdatabase:addMod(modname)
+    return self.addEntryToEnd(self.datafiles.Mods, {modname = modname})
 end
 
 --#region makeItemHash
 
----comment
+---gets the id for the modname. if the modname hasn't been encountered yet, add it.
 ---@param modname string
 ---@return integer
 function slotdatabase:getModId(modname)
-    return 1 -- todo
+    modname = self:formatModname(modname)
+    local entry, index = self.datafiles.Mods:find({modname = modname}, 0, self.getSize(self.datafiles.Mods))
+    if index then
+        return index
+    else
+        return self:addMod(modname)
+    end
 end
 
 local letterBitmask = require("letterBitmask")
 
 -- "modIDhash: I1, nameLetters I1, charSum I1, meta I1, labelLetters I1 dataHash I1"
 function slotdatabase:make_ItemHashes_modIDhash(item)
-    return self:getModId(item.modname)
+    if item.modname then
+        return self:getModId(item.modname) & 0xFF
+    end
 end
 function slotdatabase:make_ItemHashes_nameLetters(item)
-    return letterBitmask.make(item.name)
+    if item.name then
+        return letterBitmask.make(item.name) & 0xFF
+    end
 end
 function slotdatabase:make_ItemHashes_charSum(item)
-    return letterBitmask.charSum(item.name)
+    if item.name then
+        return letterBitmask.charSum(item.name) & 0xFF
+    end
 end
 function slotdatabase:make_ItemHashes_meta(item)
-    return item.meta & 0xFF
+    if item.meta then
+        return item.meta & 0xFF
+    end
 end
 function slotdatabase:make_ItemHashes_labelLetters(item)
-    return letterBitmask.make(item.label)
+    if item.label then
+        return letterBitmask.make(item.label) & 0xFF
+    end
 end
 function slotdatabase:make_ItemHashes_dataHash(item)
-    return tonumber(string.sub(item.hash, 1, 2), 16) & 0xFF
+    if item.hash then
+        return tonumber(string.sub(item.hash, 1, 2), 16) & 0xFF
+    else
+        return nil
+    end
 end
 
 ---makes an ItemHashes entry from an item.
 ---@param item Item
 function slotdatabase:makeItemHash(item)
     return {
-        -- todo
         modIDhash = self:make_ItemHashes_modIDhash(item),
         nameLetters = self:make_ItemHashes_nameLetters(item),
         charSum = self:make_ItemHashes_charSum(item),
@@ -358,7 +370,47 @@ end
 
 --#endregion
 
+---adds a new unique item
+---@param item Item
+---@return integer itemID
 function slotdatabase:addNewItem(item)
+    local infoPosition = self.addEntryToEnd(self.datafiles.FullUniqueItem, {text = item:makeRepresentation()})
+    local itemID = self:addNewItemData(infoPosition, item.stacksize)
+    self:addNewItemHash(item, itemID)
+    return itemID
+end
+
+---finds the itemID of an item.
+---makeNew: if the item cannot be found, entries will be created for it.
+---@param item Item
+---@param fromExclusive integer?
+---@param makeNew boolean?
+---@return integer? itemID
+---@return entry? itemData
+---@return string? itemRepr
+function slotdatabase:findItem(item, fromExclusive, makeNew)
+    local itemHash = self:makeItemHash(item)
+    local hashCount = self.getSize(self.datafiles.ItemHashes)
+    ---@type integer?
+    local itemID = fromExclusive and self.datafiles.ItemHashes:next(fromExclusive) or 0
+    while itemID do
+        _, itemID = self.datafiles.ItemHashes:find(itemHash, itemID, hashCount - 1)
+        if itemID then
+            local data = self.datafiles.ItemData:readEntry(itemID) --, {"info"})
+            local itemRepr = self.datafiles.FullUniqueItem:readEntry(data.info).text
+            if item:matchesRepresentation(itemRepr) then
+                return itemID, data, itemRepr
+            else
+                itemID = self.datafiles.ItemHashes:next(itemID)
+            end
+        end
+    end
+    if makeNew then
+        itemID = self:addNewItem(item)
+        local data = self.datafiles.ItemData:readEntry(itemID)
+        local itemRepr = self.datafiles.FullUniqueItem:readEntry(data.info).text
+        return itemID, data, itemRepr
+    end
 end
 
 return slotdatabase
