@@ -3,6 +3,20 @@ local Database = require("Database")
 local CachedDataFile = require("CachedDataFile")
 local AppendStringListFile = require("AppendStringListFile")
 
+--[[
+
+public methods:
+
+setItem
+getModId
+addNewItem
+findItem
+searchItem
+addContainer
+
+
+
+]]
 ---@class slotdatabase: Database
 local slotdatabase = setmetatable({}, Database)
 
@@ -217,6 +231,7 @@ end
 ---@param index integer
 ---@param itemID integer
 ---@param amount integer
+---@public
 function slotdatabase:setItem(index, itemID, amount)
     local oldSlot = self.datafiles.Slots:readEntry(index, "itemID amount")
     local old_itemID = oldSlot.itemID
@@ -319,6 +334,7 @@ end
 ---gets the id for the modname. if the modname hasn't been encountered yet, add it.
 ---@param modname string
 ---@return integer
+---@public
 function slotdatabase:getModId(modname)
     modname = self:formatModname(modname)
     local entry, index = self.datafiles.Mods:find({modname = modname}, 0, self.getSize(self.datafiles.Mods))
@@ -381,7 +397,7 @@ end
 --#endregion
 
 ---adds a new unique item
----@param item Item
+---@param item Item2
 ---@return integer itemID
 function slotdatabase:addNewItem(item)
     local infoPosition = self.addEntryToEnd(self.datafiles.FullUniqueItem, {text = item:makeRepresentation()})
@@ -398,6 +414,7 @@ end
 ---@return integer? itemID
 ---@return entry? itemData
 ---@return string? itemRepr
+---@public
 function slotdatabase:findItem(item, fromExclusive, makeNew)
     local itemHash = self:makeItemHash(item)
     local hashCount = self.getSize(self.datafiles.ItemHashes)
@@ -428,6 +445,7 @@ end
 ---@param modID integer?
 ---@param fromExclusive integer?
 ---@param to integer?
+---@public
 function slotdatabase:searchItem(label, modID, fromExclusive, to)
     local bitmask = letterBitmask.make(label)
     local pattern = {
@@ -470,6 +488,7 @@ function slotdatabase:searchItem(label, modID, fromExclusive, to)
 end
 
 --"nodeparent: I2, x: i4, y: i4, z: i4, side: I1, isExternal: B, sizeMultiplier: I4, airID: I3, start: I3, stop: I3"
+---@public
 function slotdatabase:addContainer(airID, size, nodeparent, x, y, z, side, isExternal, sizeMultiplier)
     local containerID =
         self.addEntryToEnd(
