@@ -655,6 +655,7 @@ Files:
     (itemID, amount, prevSlot, nextSlot, containerHash)
     arrayfile.make(lpath,"itemID amount prev next containerHash","I3 I4 I3 I3 I1")
     containerHash is a 1-byte value that narrows down the container.
+      Edit: it is now 2-byte, allowing for precise container identification.
     prevSlot and nextSlot point to the previous and next index in this array that stores this item. 
       it's a two-way linked list.
       they aren't necessarily sequential in the array.
@@ -687,12 +688,12 @@ Files:
     Memory size:
       itemID 3-byte, amount 4-byte (could be 1-byte as it's usually max 64)
       next,previous: 3-byte
-      containerHash: 1-byte
-      in total 14-byte
+      containerHash: 2-byte
+      in total 15-byte
       4-byte maximum uint is 4G
-      3-byte is 16M. this means the file would be 14*16M = 224MB large if it needed more than 3 bytes for slot pointers
-      One chest takes up 27*14 = 378 bytes.
-      1MB can store 74_000 slots, == 2700 chests
+      3-byte is 16M. this means the file would be 15*16M = 240MB large if it needed more than 3 bytes for slot pointers
+      One chest takes up 27*15 = 405 bytes.
+      1MB can store 69_905 slots, == 2589 chests
     
     Order of values:
       values that are often updated together should be next to each other.
@@ -713,6 +714,7 @@ Files:
       start slot
       end slot (exclusive?) -- or size
       Location
+      airID
     When moving items, searching containers with containerHash and start/end slot
     
   
@@ -773,3 +775,14 @@ meta's most significant bit could encode whether there's been a hash collision
 
 todo: datafile editor
   includes jumping to foreign keys
+
+
+mod "_custom" which contains remapped items.
+mod "_empty" which contains all air items.
+mod "_fluid"
+
+todo: slots that only allow a specific item, not turning into air even with 0 items inside
+  most significant bit of itemID?
+  making it so it can be something other than the bottommost slot for the item might be challenging.
+
+todo: add the corresponding air id to items/containers

@@ -155,7 +155,7 @@ function GenericDataFile:formatEntry(entry)
 end
 
 ---find the first entry that matches pattern
----@param pattern table
+---@param pattern entrypattern
 ---@param from integer
 ---@param to integer
 ---@param keys keysArg
@@ -166,13 +166,13 @@ function GenericDataFile:find(pattern, from, to, keys)
     local i = from
     while i <= to do
         local current = self:getCached(i)
-        local might, will = arrayfile_entry.entriesMightMatch(current, pattern)
+        local might, will = arrayfile_entry.entriesMightMatch(pattern, current)
         if might then
             if will then
                 return self:readEntry(i, keys), i
             else
                 current = self:readEntry(i, "!") -- here would go pattern's all keys, but it is already known that the cached does not contain all of them.
-                might, will = arrayfile_entry.entriesMightMatch(current, pattern)
+                might, will = arrayfile_entry.entriesMightMatch(pattern, current)
                 if will then
                     return current, i
                 end
@@ -185,7 +185,7 @@ function GenericDataFile:find(pattern, from, to, keys)
 end
 
 ---find the first `count` entries that match the pattern
----@param pattern table
+---@param pattern entrypattern
 ---@param from integer
 ---@param to integer
 ---@param keys keysArg

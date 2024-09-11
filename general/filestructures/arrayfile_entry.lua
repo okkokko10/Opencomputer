@@ -102,18 +102,25 @@ function arrayfile_entry.entryHasKeys(entry, keys)
     return true
 end
 
+---passed to arrayfile_entry.entriesMightMatch. if contains _function, it is used to override entriesMightMatch.
+---@class entrypattern: entry, nil, { _function: (fun(entry:entry?):boolean,boolean) }
+---@field _function? (fun(self:entrypattern,entry:entry?):boolean,boolean)
+
 ---could pattern be a subset of entry (if there was more info)? symmetrical.
 ---also, is the current info about entry enough to say that it matches the pattern?
+---@param pattern entrypattern
 ---@param entry entry?
----@param pattern entry?
 ---@return boolean might
 ---@return boolean will
-function arrayfile_entry.entriesMightMatch(entry, pattern)
+function arrayfile_entry.entriesMightMatch(pattern, entry)
     if not pattern then
         return true, true
     end
     if not entry then
         return true, false
+    end
+    if pattern._function then
+        return pattern._function(pattern, entry)
     end
     local every = true
     for i, value in pairs(pattern) do

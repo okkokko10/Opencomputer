@@ -10,7 +10,7 @@ local slotdatabase = setmetatable({}, Database)
 local Slots =
     cachedarrayfile.make(
     "/usr/storage/slots.arrayfile",
-    "itemID: I3, amount: I4, next: I3, prev: I3, containerHash: I1"
+    "itemID: I3, amount: I4, next: I3, prev: I3, containerHash: I2"
 )
 Slots.assume_behaviour = {check = true}
 
@@ -33,7 +33,7 @@ local FullUniqueItem = CachedDataFile.make(AppendStringListFile.make("/usr/stora
 local Containers =
     cachedarrayfile.make(
     "/usr/storage/containers.arrayfile",
-    "nodeparent: I2, x: i4, y: i4, z: i4, side: I1, isExternal: B, sizeMultiplier: I4, start: I3, stop: I3"
+    "nodeparent: I2, x: i4, y: i4, z: i4, side: I1, isExternal: B, sizeMultiplier: I4, airID: I3, start: I3, stop: I3"
 ) -- stop is exclusive
 
 local Nodes = cachedarrayfile.make("/usr/storage/nodes.arrayfile", "nodeparent: I2, x: i4, y: i4, z: i4")
@@ -291,7 +291,7 @@ function slotdatabase:addSlots(containerID, air_itemID, count)
                 amount = 1,
                 next = nex,
                 prev = size + 1,
-                containerHash = containerID % 256
+                containerHash = containerID & 0xFFFF
             }
         )
         nex = size
@@ -423,7 +423,53 @@ function slotdatabase:findItem(item, fromExclusive, makeNew)
     end
 end
 
---"nodeparent: I2, x: i4, y: i4, z: i4, side: I1, isExternal: B, sizeMultiplier: I4, start: I3, stop: I3"
+---searches items. label can be partially written.
+---@param label string
+---@param modID integer?
+---@param fromExclusive integer?
+---@param to integer?
+function slotdatabase:searchItem(label, modID, fromExclusive, to)
+    local bitmask = letterBitmask.make(label)
+    local pattern = {
+        _function = function(patt, entry)
+            local will = true
+            if entry.labelLetters then
+                if not letterBitmask.couldBeSubstring(entry.labelLetters, bitmask) then
+                    return false, false
+                end
+            else
+                will = false
+            end
+            if modID then
+                if entry.modIDhash then
+                    if entry.modIDhash ~= modID then
+                        return false, false
+                    end
+                else
+                    will = false
+                end
+            end
+            return true, will
+        end
+    }
+    local hashCount = self.getSize(self.datafiles.ItemHashes) -- todo: could this slow things down?
+    ---@type integer?
+    local itemID = fromExclusive and self.datafiles.ItemHashes:next(fromExclusive) or 0
+    while itemID do
+        _, itemID = self.datafiles.ItemHashes:find(pattern, itemID, hashCount - 1)
+        if itemID then
+            local data = self.datafiles.ItemData:readEntry(itemID) --, {"info"})
+            local itemRepr = self.datafiles.FullUniqueItem:readEntry(data.info).text
+            if Item2.representationMatchesLabel(itemRepr, label) then
+                return itemID, data, itemRepr
+            else
+                itemID = self.datafiles.ItemHashes:next(itemID)
+            end
+        end
+    end
+end
+
+--"nodeparent: I2, x: i4, y: i4, z: i4, side: I1, isExternal: B, sizeMultiplier: I4, airID: I3, start: I3, stop: I3"
 function slotdatabase:addContainer(airID, size, nodeparent, x, y, z, side, isExternal, sizeMultiplier)
     local containerID =
         self.addEntryToEnd(
@@ -435,7 +481,8 @@ function slotdatabase:addContainer(airID, size, nodeparent, x, y, z, side, isExt
             z = math.floor(z),
             side = side,
             isExternal = isExternal and 1 or 0,
-            sizeMultiplier = sizeMultiplier
+            sizeMultiplier = sizeMultiplier,
+            airID = airID
         }
     )
     local start, stop = self:addSlots(containerID, airID, size)

@@ -252,11 +252,11 @@ function CachedDataFile:assume(index, entry)
     end
     -- == "check" or == "checkfile"
     local current = self:getCached(index)
-    local might, will = arrayfile_entry.entriesMightMatch(current, entry)
+    local might, will = arrayfile_entry.entriesMightMatch(entry, current)
     if self.assume_behaviour.checkfile then
         if might and not will then -- if might is false, this won't change that.
             current = self:readEntry(index, "!")
-            might, will = arrayfile_entry.entriesMightMatch(current, entry)
+            might, will = arrayfile_entry.entriesMightMatch(entry, current)
         end
     end
     if not might then
