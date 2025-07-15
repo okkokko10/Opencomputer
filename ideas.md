@@ -786,3 +786,21 @@ todo: slots that only allow a specific item, not turning into air even with 0 it
   making it so it can be something other than the bottommost slot for the item might be challenging.
 
 todo: add the corresponding air id to items/containers
+
+
+How to represent external inventories in the new system?
+  Currently isExternal is just a value in inventories. hmm?
+
+
+
+some slots shouldn't just be filled in order. 
+  slots with stack multipliers should only be used when needed.
+  maybe an airID that allows the same items as normal air, but won't be automatically assigned to.
+
+
+option for an item to be unstackable, but instead track its durability with its amount. 
+  used for artisan tools
+  denoted by 0 maxStack
+  could apply to any unstackable item.
+
+todo: slotdatabase translate slot to location+side+slot
