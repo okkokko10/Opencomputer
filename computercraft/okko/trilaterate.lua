@@ -66,7 +66,6 @@ function tri.solve_planes(A,B,C)
     local out = (Matrix.solve(mat,vec)) -- note that the inverse only depends on the origins
     print(out)
     return out
-
 end
 
 
@@ -75,7 +74,7 @@ end
 ---@param B Circle
 ---@param C Circle
 ---@return vector
-function tri.solve_circles(A,B,C)
+function tri.solve_circles(A,B,C,D)
     local pA = tri.plane_of_circles(B,C)
     local pB = tri.plane_of_circles(A,C)
     local pC = tri.plane_of_circles(A,B)
@@ -88,16 +87,22 @@ function tri.execute()
     local X = peripheral.wrap("left").getClosestDistance()
     local Y = peripheral.wrap("top").getClosestDistance()
     local Z = peripheral.wrap("back").getClosestDistance()
+    local mY = peripheral.wrap("bottom").getClosestDistance()
     tri.solve_circles({
-        origin = vector.new(1.01,0,0.001),
+        origin = vector.new(1,0,0),
         radius = X
     },{
-        origin = vector.new(0.003,1.2,0),
+        origin = vector.new(0,1,0),
         radius = Y
     },{
-        origin = vector.new(0,0,1.001),
+        origin = vector.new(0,0,1),
         radius = Z
-    })
+    },
+    {
+        origin = vector.new(0,-1,0),
+        radius = mY
+    }
+)
 
 
 end

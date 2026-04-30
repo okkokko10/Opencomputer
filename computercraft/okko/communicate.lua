@@ -5,7 +5,8 @@ local md = peripheral.find("modem") or error("No modem attached", 0)
 local params = {...}
 
 local PORT = tonumber(params[2]) or 1
-local username = params[1] or "abc"
+
+local username = params[1] or nil
 
 local knownUsers = {}
 
@@ -34,15 +35,25 @@ local function addMessage(info,message)
     term.redirect(win_conversation)
     term.current().restoreCursor()
     term.current().redraw()
-    hb.blitHet(info, "2")
+    hb.blitHet(info.username or "", "2")
     hb.blitHet(": ", "0")
-    hb.blitHet(tostring(message) .. "\n")
+    hb.blitHet((message) .. "\n")
+    if info.extra then
+        hb.blitHet(info.extra,"7","1")
+    end
+    -- print(info.extra)
     print()
     term.redirect(win_input)
     term.current().restoreCursor()
     term.current().redraw()
 
 
+end
+
+local function sendMessage(message)
+    addMessage({username = username or "[YOU]"},message)
+    md.transmit(PORT,PORT,{username,message})
+    
 end
 
 
@@ -52,7 +63,10 @@ local function listener()
         local info = ("%d<-%d (%fm)"):format(
             channel, replyChannel, distance
         )
-        addMessage(info,tostring(message))
+        addMessage({username=message[1],extra = info},(message[2]))
+        if tostring(message[2]) == "PING" then
+            sendMessage("RESPONSE")
+        end
     end
 end
 
@@ -62,8 +76,7 @@ local function user()
     win_input.setCursorPos(1,1)
     while true do
         local w = read()
-        addMessage("[YOU]",w)
-        md.transmit(PORT,PORT,w)
+        sendMessage(w)
         win_input.clear()
         win_input.setCursorPos(1,1)
     end

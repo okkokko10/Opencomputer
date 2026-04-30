@@ -33,6 +33,10 @@
 ---@operator mul(Matrix<X1,any, F1>): Matrix<Y1,any, F1> # doesn't have generics for this
 local Matrix = {__name = "Matrix"}
 
+---@generic Y:dim,F:Field
+---@alias Ket<Y,F> Matrix<Y,1,F>
+---@alias Bra<X,F> Matrix<1,X,F>
+
 Matrix.__index = Matrix
 
 -- col is the input dimension, row the output dimension:
@@ -252,7 +256,7 @@ end
 
 --- makes a column vector -- that's odd. why does a column vector have multiple columns?
 ---@param vec Ket3
----@return Matrix<three,1,number> 
+---@return Ket<three,number> 
 function Matrix.fromVector(vec)
     ---@type Matrix<three,1,number>
     local out = Matrix.new_base(3,1)
@@ -264,10 +268,10 @@ end
 Matrix.fromKet=Matrix.fromVector
 
 ---@param vec Bra3
----@return Matrix<three,1,number> 
+---@return Bra<three,number> 
 function Matrix.fromBra(vec)
-    ---@type Matrix<three,1,number>
-    local out = Matrix.new_base(3,1)
+    ---@type Bra<three,number>
+    local out = Matrix.new_base(1,3)
     out:set(1,1,vec.x)
     out:set(1,2,vec.y)
     out:set(1,3,vec.z)
@@ -275,14 +279,14 @@ function Matrix.fromBra(vec)
 end
 
 
----@param self Matrix<three,1,number>
+---@param self Ket<three,number>
 ---@return Ket3
 function Matrix:toVector()
     return vector.new(self:get(1,1),self:get(2,1),self:get(3,1))
 end
 Matrix.toKet = Matrix.toVector
 
----@param self Matrix<1,three,number>
+---@param self Bra<three,number>
 ---@return Bra3
 function Matrix:toBra()
     return vector.new(self:get(1,1),self:get(1,2),self:get(1,3))
@@ -290,8 +294,8 @@ end
 
 ---@generic F:Field
 ---@param ... F
----@return Matrix<unknown,1,F>
-function Matrix.bra(...)
+---@return Ket<unknown,F>
+function Matrix.ket(...)
     local out = setmetatable({...},Matrix)
     out.cols = select("#",...)
     out.rows = 1
@@ -299,8 +303,8 @@ function Matrix.bra(...)
 end
 ---@generic F:Field
 ---@param ... F
----@return Matrix<1,unknown,F>
-function Matrix.ket(...)
+---@return Bra<unknown,F>
+function Matrix.bra(...)
     local out = setmetatable({...},Matrix)
     out.cols = 1
     out.rows = select("#",...)
@@ -354,9 +358,10 @@ end
 ---@generic Y: dim, X: dim, F: Field # default
 ---@param self Matrix<Y,X, F> # default
 ---@param debug_print fun(copy:Matrix<Y,X, F>, out: Matrix<Y,X, F>, step: string|nil)|nil
----@return Matrix<X,Y,F>
+---@return Matrix<X,Y,F>|nil
+---@return nil|string
 function Matrix.inverse(self, debug_print)
-    assert(self.cols==self.rows, "only square matrices have inverses!")
+    if (self.cols~=self.rows) then return nil, "only square matrices have inverses!" end
     local copy = self:scalar_mul(1)
     local out = Matrix.identity(self.cols)
     -- gaussian elimination
@@ -392,7 +397,7 @@ function Matrix.inverse(self, debug_print)
             for y = 1, copy.cols do
                 if copy:get(y,from) ~= 0 then
                     add2(y,from,1)
-                    if debug_print then debug_print("make diagonal nonzero: add "..y.." -> ["..from "]",copy,out) end;
+                    if debug_print then debug_print("make diagonal nonzero: add "..y.." -> ["..from.. "]",copy,out) end;
                     success = true
                     break
                 end
@@ -460,10 +465,10 @@ end
 
 ---comment
 ---@param self Matrix<3,3,number>
----@param vec vector
----@return vector
+---@param vec Ket<3,number>
+---@return Ket<3,number>
 function Matrix:solve(vec)
-    return self:inverse():mul_vector(vec)
+    return self:inverse_debug()*(vec)
 end
 
 

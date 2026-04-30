@@ -13,21 +13,36 @@ function main(name,executable,...)
         end
         if not printer then error("no printer found") end
     else
+        local oldprint = print
+        oldprint("opening")
         local path = shell.resolve(name)
         local file = fs.open(path, "w")
-        local write
+        local write = file.write
         print = function (...)
+            oldprint("|",...)
             if select("#",...) ~= 0 then
-            write(select(1,...))
+            file.write(select(1,...))
             for i = 2, select("#",...) do
-                write(" " .. select(i,...))
+                file.write(" " .. select(i,...))
             end
             end
-            write("\n")
+            file.write("\n")
         end
-        shell.run(executable,...)
-        file.close()
+        local epath = --shell.resolve
+            (executable)
+        oldprint("in main function ... is",...)
 
+        oldprint("starting ", epath, "......")
+        pcall(
+            function (...)
+            require(epath)
+            oldprint"success"
+            end,...
+        )
+        -- os.run({print=myprint},shell.resolve(executable),...)
+        oldprint"closing..."
+        file.close()
+        oldprint"done"
     end
 
 
