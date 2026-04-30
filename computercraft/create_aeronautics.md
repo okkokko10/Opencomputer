@@ -58,7 +58,8 @@ a bit confusing: a column vector is a matrix with one column
 
 $$ 
 \newcommand{\inner}[2]{\langle {#1} | {#2} \rangle}
-\newcommand{\for}[2]{^{\left({#1}\right)\rightarrow}{#2}}
+\newcommand{\for}[2]{{^{\left({#1}\right)\rightarrow}{#2}}}
+a \\
 \for{x}{x^2}
 \\
 \text{oh hey, I just realized, the function} \lambda x.fx 
@@ -112,3 +113,98 @@ and X<A,B> * Y<B,C> is only defined if X * Y is defined
 
 
 idea: a set of groups
+
+
+# trilateration
+$$
+
+\begin{align*}
+
+&
+{^{\forall i}}&&
+|P - origin[i]| = radius[i]
+\\
+&
+{^{\forall i}}&&
+(P - origin[i])^2 = radius[i]^2
+\\&
+
+{^{\forall i}}&&
+P\cdot P -2 \cdot P\cdot origin[i] + origin[i] \cdot origin[i] = radius[i]^2
+\\&&&
+\text{subtract one from another}
+
+\\&
+{^{\forall i j}}&&
+\begin{matrix}
+P\cdot P -2 \cdot P\cdot origin[i] + origin[i] \cdot origin[i]
+& radius[i]^2 \\
+- \left(P\cdot P -2 \cdot P\cdot origin[j] + origin[j] \cdot origin[j]\right) 
+& - radius[j]^2
+\end{matrix}
+
+\\&
+{^{\forall i j}}&&
+\begin{matrix}
+-2 \cdot P\cdot origin[i] + origin[i] \cdot origin[i]
+& radius[i]^2 \\
+- \left(-2 \cdot P\cdot origin[j] + origin[j] \cdot origin[j]\right) 
+& - radius[j]^2
+\end{matrix}
+
+
+\end{align*}
+
+$$
+
+retry. a grid has total value 0
+
+$$
+\newcommand{\n}{\\&}
+
+\begin{align*}
+\n
+\forall {i j}
+\n
+
+\begin{matrix}
+    X\cdot X -2 \cdot X\cdot origin[i] + origin[i] \cdot origin[i]
+    & -radius[i]^2 \\
+    - \left( X\cdot X -2 \cdot X\cdot origin[j] + origin[j] \cdot origin[j]\right) 
+    & radius[j]^2
+\end{matrix}
+\n
+\Updownarrow \n
+
+\begin{matrix}
+    -2 \cdot X\cdot origin[i] + origin[i] \cdot origin[i]
+    & -radius[i]^2 \\
+    - \left(-2 \cdot X\cdot origin[j] + origin[j] \cdot origin[j]\right) 
+    & radius[j]^2
+\end{matrix}
+
+\n
+A_i := -2 \cdot origin[i] \n
+B_i := origin[i] \cdot origin[i] - radius[i]^2
+
+\n \Updownarrow \n 
+\left|
+\begin{matrix}
+    X\cdot A_i + B_i \\
+    - \left(X\cdot A_j + B_j \right)
+\end{matrix}
+\right|
+
+
+\n \Updownarrow \n 
+\left|
+\begin{matrix}
+    X\cdot \left(A_i-A_j\right) + \left(B_i-B_j\right)
+\end{matrix}
+\right|
+
+
+\end{align*}
+
+
+$$

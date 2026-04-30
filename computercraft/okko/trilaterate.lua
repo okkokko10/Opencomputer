@@ -58,14 +58,14 @@ function tri.solve_planes(A,B,C)
         Matrix.fromBra(C.normal)
     )
     local vec = Matrix.ket(A.offset,B.offset,C.offset)
-    print(mat)
-    print("bra:",Matrix.bra(A.offset,B.offset,C.offset))
-    print("ket: ",vec)
-    print("fromBra:", Matrix.fromBra(A.normal))
-    print("fromKet:", Matrix.fromKet(A.normal))
+    -- print(mat)
+    -- print("bra:",Matrix.bra(A.offset,B.offset,C.offset))
+    -- print("ket: ",vec)
+    -- print("fromBra:", Matrix.fromBra(A.normal))
+    -- print("fromKet:", Matrix.fromKet(A.normal))
     local out = (Matrix.solve(mat,vec)) -- note that the inverse only depends on the origins
-    print(out)
-    return out
+    -- print(out)
+    return Matrix.toKet(out)
 end
 
 
@@ -75,32 +75,35 @@ end
 ---@param C Circle
 ---@return vector
 function tri.solve_circles(A,B,C,D)
-    local pA = tri.plane_of_circles(B,C)
-    local pB = tri.plane_of_circles(A,C)
-    local pC = tri.plane_of_circles(A,B)
-    return (tri.solve_planes(pA,pB,pC))
+    local AB = tri.plane_of_circles(A,B)
+    local AC = tri.plane_of_circles(A,C)
+    local AD = tri.plane_of_circles(A,D)
+    return (tri.solve_planes(AB,AC,AD))
 
 end
+
+
 
 
 function tri.execute()
     local X = peripheral.wrap("left").getClosestDistance()
     local Y = peripheral.wrap("top").getClosestDistance()
     local Z = peripheral.wrap("back").getClosestDistance()
-    local mY = peripheral.wrap("bottom").getClosestDistance()
-    tri.solve_circles({
+    -- local mY = peripheral.wrap("bottom").getClosestDistance()
+    local mX = peripheral.wrap("right").getClosestDistance()
+    return tri.solve_circles({
         origin = vector.new(1,0,0),
         radius = X
     },{
-        origin = vector.new(0,1,0),
+        origin = vector.new(0,-1,0),
         radius = Y
     },{
         origin = vector.new(0,0,1),
         radius = Z
     },
     {
-        origin = vector.new(0,-1,0),
-        radius = mY
+        origin = vector.new(-1,0,0),
+        radius = mX
     }
 )
 
@@ -118,3 +121,5 @@ function tri.calc(...)
     
 
 end
+
+return tri

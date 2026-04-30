@@ -131,6 +131,7 @@ end
 ---@param target Matrix<Y,X, Fc>
 ---@param func fun(a:Fa,b:Fb):Fc
 function Matrix._zipmapto(A,B,target,func)
+    -- todo: can be made more efficient by using raw indices
     for y = 1,A.cols do
         for x = 1,A.rows do
             target:set(y,x,func(A:get(y,x),B:get(y,x)))
@@ -210,7 +211,7 @@ function Matrix:__sub(other)
 ---@param self Matrix<Y,X, F> # default
 ---@param other Matrix<X,W, F>
 ---@return Matrix<Y,W, F>
-function Matrix:__mul(other)
+function Matrix:mul(other)
     -- -@type Matrix<Y,W, F>
     local target = Matrix.new_base(self.cols,other.rows)
     for y = 1,self.cols do
@@ -225,6 +226,7 @@ function Matrix:__mul(other)
     return target
 end
 
+
 --- with a heterogenous multiplication mulF
 ---@generic Y:dim,X:dim,W:dim, Fs:Field, Fo:Field, Fr:Field
 ---@param self Matrix<Y,X, Fs>
@@ -232,7 +234,7 @@ end
 ---@param mulF fun(s: Fs, o: Fo): Fr
 ---@param addF fun(a: Fr, b: Fr): Fr
 ---@return Matrix<Y,W, Fr>
-function Matrix:mul_general(other,mulF,addF)
+function Matrix:mul_field(other,mulF,addF)
     local target = Matrix.new_base(self.cols,other.rows)
     for y = 1,self.cols do
         for w = 1,other.rows do
@@ -254,6 +256,33 @@ function Matrix:scalar_mul(scalar)
 end
 
 
+---@param vec Ket3
+---@return Ket3
+function Matrix:mul_vector(vec)
+    local a = self:__mul(Matrix.fromVector(vec))
+    return a:toVector()
+end
+
+
+--- number*Matrix, Matrix*number, Matrix*Matrix, Matrix*vector
+---@param left Matrix|number
+---@param right Matrix|number|Ket3
+function Matrix.__mul(left,right)
+    if type(left) == "number" then -- number is the only sensical thing to left multiply this by. vector-matrix multiplication is not supported
+        return right:scalar_mul(left) -- only way this function was called is if right is a matrix
+    end
+    if  type(right) == "number" then
+        return left:scalar_mul(right)
+    elseif getmetatable(right) == Matrix then
+        return left:mul(right)
+    else
+        ---@cast right Ket3
+        return left:mul_vector(right)
+    end
+end
+
+
+
 --- makes a column vector -- that's odd. why does a column vector have multiple columns?
 ---@param vec Ket3
 ---@return Ket<three,number> 
@@ -264,7 +293,7 @@ function Matrix.fromVector(vec)
     out:set(2,1,vec.y)
     out:set(3,1,vec.z)
     return out
-end 
+end
 Matrix.fromKet=Matrix.fromVector
 
 ---@param vec Bra3
@@ -332,13 +361,6 @@ function Matrix.stack(...)
     return out
 end
 
-
----@param vec Ket3
----@return Ket3
-function Matrix:mul_vector(vec)
-    local a = self:__mul(Matrix.fromVector(vec))
-    return a:toVector()
-end
 
 function Matrix.identity(cols)
     local out = Matrix.new_base(cols,cols)
@@ -429,7 +451,9 @@ end
 
 
 function Matrix:__unm()
-    
+    Matrix.map(self,function (x)
+        return -x
+    end)
 end
 
 ---@generic Y: dim, X: dim, F: Field # default
@@ -468,7 +492,7 @@ end
 ---@param vec Ket<3,number>
 ---@return Ket<3,number>
 function Matrix:solve(vec)
-    return self:inverse_debug()*(vec)
+    return self:inverse()*(vec)
 end
 
 
