@@ -11,7 +11,7 @@ local tri = {}
 
 
 
--- the equation |origin-x| = radius
+-- the equation |x-origin| = radius
 ---@class Circle
 ---@field origin vector
 ---@field radius number
@@ -38,9 +38,9 @@ end
 ---@param right Circle
 ---@return Plane
 function tri.plane_of_circles(left, right)
-    local A1 = left.origin * (-2)
+    local A1 = left.origin * (2)
     local B1 = -left.radius*left.radius + left.origin:dot(left.origin)
-    local A2 = right.origin * (-2)
+    local A2 = right.origin * (2)
     local B2 = -right.radius*right.radius + right.origin:dot(right.origin)
     return {normal = A1 - A2, offset = B1 - B2}
 end
@@ -69,10 +69,28 @@ function tri.solve_planes(A,B,C)
 end
 
 
+---does the point truly lie at the intersection?
+---@param circles Circle[]
+---@param point Location
+---@return boolean small
+---@return number variance
+function tri.circles_validate(circles,point)
+
+    local total_variance = 0.0
+    for key, circle in pairs(circles) do
+        local dev = (point - circle.origin):length() - circle.radius
+        total_variance = total_variance + dev*dev
+    end
+    return total_variance < 0.01, total_variance
+end
+
+
+
 --- intersection of A B and C
 ---@param A Circle
 ---@param B Circle
 ---@param C Circle
+---@param D Circle
 ---@return vector
 function tri.solve_circles(A,B,C,D)
     local AB = tri.plane_of_circles(A,B)
@@ -82,8 +100,106 @@ function tri.solve_circles(A,B,C,D)
 
 end
 
+---@class constellation
+---@field origins {[string]: Location}
+
+local directions = {
+    top = vector.new(0,1,0),
+    bottom = vector.new(0,-1,0),
+    left = vector.new(-1,0,0),
+    right = vector.new(1,0,0),
+    back = vector.new(0,0,-1),
+    front = vector.new(0,0,1)
+}
 
 
+
+function tri.get_peripheral_constellation()
+    local out = {}
+    for key, value in pairs(directions) do
+        if peripheral.getType(key) == "modulating_link" then
+            out[key] = value
+        end
+    end
+    return {
+        origins = out
+    }
+end
+
+function tri.radii_of_peripheral_constellation(constellation)
+    local radii = {}
+    for key, value in pairs(constellation.origins) do
+        peripheral.call(key,"getClosestDistance")
+    end
+    return radii
+end
+
+
+
+---is the radius valid? 0 can mean null. also takes care of the nil case
+---@param radius number|nil
+---@return boolean|nil
+function tri.valid_radius(radius)
+    return radius and radius > 0
+end
+
+
+function tri.use_constellation_with_radii(constellation,radii)
+
+    ---@type Circle[]
+    local okay = {}
+    for key, value in pairs(constellation.origins) do
+        local radius = radii[key]
+        if tri.valid_radius(radius) then
+            okay[#okay + 1] = {
+                origin = value,
+                radius = radius
+            }
+        end
+        if #okay >= 4 then 
+            break
+        end
+    end
+    if not #okay >= 4 then 
+        return
+    end
+    tri.solve_circles(table.unpack(okay))
+
+    
+end
+
+---@class PrecalculatedConstellation
+---@field points {[1|2|3|4] : Location}
+---@field inv Matrix<three,three,number>
+---@field B {[three]: number}
+
+
+---comment
+---@param points {[1|2|3|4] : Location}
+function tri.precalculate(points)
+    local function normal(left,right)
+        return 2*(left.origin - right.origin)
+    end
+    local mat = Matrix.stack(
+        Matrix.fromBra(normal(points[1],points[2])),
+        Matrix.fromBra(normal(points[1],points[3])),
+        Matrix.fromBra(normal(points[1],points[4]))
+    )
+    local inv = mat:inverse()
+    
+    local B1 = -left.radius*left.radius + left.origin:dot(left.origin)
+    --todo: incomplete
+    
+end
+---comment
+---@param prec PrecalculatedConstellation
+---@param radii {[1|2|3|4] : number}
+function tri.precalculate_after(prec,radii)
+    -- todo: incomplete
+end
+
+
+-- todo: matrices that use non-number indices
 
 function tri.execute()
     local X = peripheral.wrap("left").getClosestDistance()
@@ -95,7 +211,7 @@ function tri.execute()
         origin = vector.new(1,0,0),
         radius = X
     },{
-        origin = vector.new(0,-1,0),
+        origin = vector.new(0,1,0),
         radius = Y
     },{
         origin = vector.new(0,0,1),
@@ -105,21 +221,33 @@ function tri.execute()
         origin = vector.new(-1,0,0),
         radius = mX
     }
-)
-
-
+    )
 end
+
+function tri.test()
+    local c = {}
+    local p = vector.new(math.random(),math.random(),math.random())
+    for i = 1,4 do
+        local origin = vector.new(math.random(),math.random(),math.random())
+        c[i] = {
+            origin = origin,
+            radius = (origin - p):length()
+        }
+    end
+    local res = tri.solve_circles(c[1],c[2],c[3],c[4])
+    return (p - res):length(), p, res
+    
+end
+
+
 tri.execute()
 
----@param ... Circle
-function tri.calc(...)
-    local circles = {...}
-    -- local w = circles[1]
-    local guess = vector.new(1,1,1)
-    local w = guess + guess
-
-    
-
+do
+    local d,p,res = tri.test()
+    if d > 0.01 then
+        print(p,res)
+        error("trilaterate test fails: ".. d.. " > 0.01")
+    end
 end
 
 return tri

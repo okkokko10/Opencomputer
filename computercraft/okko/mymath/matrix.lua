@@ -104,6 +104,10 @@ function Matrix:getindex(col,row)
     return self.rows*(col-1)+row
 end
 
+function Matrix:rawindices()
+    return self.rows*self.cols
+end
+
 ---@generic Y: dim, X: dim, F: Field # default
 ---@param self Matrix<Y,X, F> # default
 ---@param col Y
@@ -132,11 +136,16 @@ end
 ---@param func fun(a:Fa,b:Fb):Fc
 function Matrix._zipmapto(A,B,target,func)
     -- todo: can be made more efficient by using raw indices
-    for y = 1,A.cols do
-        for x = 1,A.rows do
-            target:set(y,x,func(A:get(y,x),B:get(y,x)))
-        end
+
+    for i = 1, target:rawindices() do
+        target[i] = func(A[i],B[i])
     end
+
+    -- for y = 1,A.cols do
+    --     for x = 1,A.rows do
+    --         target:set(y,x,func(A:get(y,x),B:get(y,x)))
+    --     end
+    -- end
 end
 
 
@@ -157,11 +166,15 @@ end
 ---@return Matrix<Y,X, Fb>
 function Matrix.map(A,func)
     local target = Matrix.new_base(A.cols,A.rows)
-    for y = 1,A.cols do
-        for x = 1,A.rows do
-            target:set(y,x,func(A:get(y,x)))
-        end
+    
+    for i = 1, target:rawindices() do
+        target[i] = func(A[i])
     end
+    -- for y = 1,A.cols do
+    --     for x = 1,A.rows do
+    --         target:set(y,x,func(A:get(y,x)))
+    --     end
+    -- end
     return target
 end
 
@@ -376,12 +389,12 @@ function Matrix.identity(cols)
 end
 
 
-
 ---@generic Y: dim, X: dim, F: Field # default
 ---@param self Matrix<Y,X, F> # default
 ---@param debug_print fun(copy:Matrix<Y,X, F>, out: Matrix<Y,X, F>, step: string|nil)|nil
 ---@return Matrix<X,Y,F>|nil
 ---@return nil|string
+---@overload fun(self: Matrix<Y,X, F>): Matrix<X,Y,F>|nil,nil|string
 function Matrix.inverse(self, debug_print)
     if (self.cols~=self.rows) then return nil, "only square matrices have inverses!" end
     local copy = self:scalar_mul(1)
