@@ -25,5 +25,5 @@ local previousTerm = term.redirect(wind)
 
 parallel.waitForAny((function()
         (shell.execute or shell.run)(sProgram, table.unpack(tArgs, 3))
-    end),function () redirect_remote.host.listen_events(remoteID,wind) end)
+    end),function () redirect_remote.host.hook(remoteID,wind) end)
 term.redirect(previousTerm)

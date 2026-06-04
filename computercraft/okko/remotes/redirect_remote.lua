@@ -124,17 +124,59 @@ function host.event_received(message,hostData)
     if te and te ~= true then
         message = te(message,hostData)
     end
+    if multishell then
+        multishell.setFocus(multishell.getCurrent())
+    end
     os.queueEvent(unpack(message))
 end
-function host.listen_events(remoteID,wind)
-    
-    local hostData = {isHost=true,remoteID = remoteID,window = wind.hostcopy, send_window = wind, ox = wind.ox, oy = wind.oy}
+function host.listen_events(hostData)
     while true do
         local sender, message = rednet.receive("redirect_remote_event")
-        if remoteID and remoteID == sender then
+        if hostData.remoteID and hostData.remoteID == sender then
             host.event_received(message,hostData)
         end
     end
+end
+
+function remote.open(remoteData)
+    local height, width = remoteData.window.getSize()
+    rednet.send(remoteData.hostID,{height=height,width=width},"redirect_remote_open_remote")
+end
+
+function host.listen_open(hostData)
+    while true do
+        local sender, message = rednet.receive("redirect_remote_open_remote")
+        if hostData.remoteID and hostData.remoteID == sender then
+            local px,py = hostData.window.getPosition()
+            hostData.window.reposition(px,py,message.height,message.width)
+            os.queueEvent("term_resize")
+        end
+    end
+    
+end
+function host.listen_resize(hostData)
+    while true do
+        local event = os.pullEvent("term_resize")
+        -- local px,py = hostData.window.getPosition()
+        local ox, oy = getOffset(hostData.window)
+        hostData.ox = ox
+        hostData.oy = oy
+    end
+end
+
+
+
+function host.hook(remoteID,wind)
+    local hostData = {isHost=true,remoteID = remoteID,window = wind.hostcopy, send_window = wind, ox = wind.ox, oy = wind.oy}
+    parallel.waitForAny(
+    function ()
+        host.listen_events(hostData)
+    end,function ()
+        host.listen_open(hostData)
+    end,function ()
+        host.listen_resize(hostData)
+    end
+    )
 end
 
 
@@ -142,6 +184,7 @@ end
 function remote.hook(hostID,wind)
     local ox, oy = getOffset(wind)
     local remoteData = {isHost=false,hostID = hostID,window = wind, ox = ox, oy = oy}
+    remote.open(remoteData)
     parallel.waitForAny(
     function ()
         remote.listen(remoteData)
