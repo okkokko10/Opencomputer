@@ -1,5 +1,5 @@
-local BaseElement = require "okko.elements.BaseElement"
-local helpblit = require "okko.elements.helpblit"
+local BaseElement = require "/okko.elements.BaseElement"
+local helpblit = require "/okko.elements.helpblit"
 
 ---@class FillElement: BaseElement
 ---@field text string[][]

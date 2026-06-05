@@ -77,6 +77,11 @@ function BaseElement:toGlobalPosition(x,y)
     return gx + x - 1, gy + y - 1
 end
 
+function BaseElement:toLocalPosition(x,y)
+    local gx,gy = self:getGlobalPosition()
+    return x - (gx - 1), y - (gy - 1)
+end
+
 
 -- sets cursor pos to where it would be, and returns the window to be written to
 function BaseElement:setCursorPos(x,y)
@@ -85,20 +90,20 @@ function BaseElement:setCursorPos(x,y)
 end
 
 function BaseElement:isLocalBounded(x,y)
-    return not (x < 1 or self.width < x or y < 1 or self.height < y ) -- not, because I'm lazy
+    return (1 <= x and x <= self.width and 1 <= y and y <= self.height) 
 end
 
-
+local consumeEvents = false
 function BaseElement:mouseEventRaw(event, misc, x, y)
-    local px, py = self:getPosition()
-    local x2 = x-px+1
-    local y2 = y-py+1
+    -- local px, py = self:getPosition()
+    -- local x2 = x-px+1
+    -- local y2 = y-py+1
     -- 
-    if self:onMouseEvent(event,misc,x2,y2) then
+    if self:onMouseEvent(event,misc,x,y) and consumeEvents then
         return true
     end
     for index, value in ipairs(self:getChildren()) do
-        if (value:mouseEventRaw(event,misc,x2,y2)) then
+        if (value:mouseEventRaw(event,misc,x,y)) and consumeEvents then
             return true
         end
     end
@@ -145,6 +150,7 @@ function BaseElement:addChild(child)
     child.awindow = self.awindow
     child:onPostParentInit()
     self:onPostAddChild(child)
+    return self
 end
 -- function BaseElement:remove()
     

@@ -1,6 +1,6 @@
-local BaseElement = require "okko.elements.BaseElement"
-local BaseVariableRectElement = require "okko.elements.BaseVariableRectElement"
-local Variable = require "okko.elements.Variable"
+local BaseElement = require "/okko.elements.BaseElement"
+local BaseVariableRectElement = require "/okko.elements.BaseVariableRectElement"
+local Variable = require "/okko.elements.Variable"
 
 
 ---@class VisibleVariableRect: BaseElement
@@ -24,7 +24,7 @@ function VisibleVariableRect:create(board,seen_board,nub)
     local funcc = function (vx,vy)
         nub:setCenter(vx and vx:get() or 1, vy and vy:get() or 1)
     end
-    Variable.addCallback(funcc,board:getVariables())
+    Variable.addCallbackGroup(funcc,board:getVariables())
     
     local this = self:new({board=board,seen_board = seen_board, nub=nub})
     this:addChild(board)

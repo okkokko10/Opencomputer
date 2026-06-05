@@ -1,4 +1,4 @@
-local BaseElement = require "okko.elements.BaseElement"
+local BaseElement = require "/okko.elements.BaseElement"
 
 ---@class RootElement: BaseElement
 ---@field parent_window unknown
@@ -20,4 +20,26 @@ end
 function RootElement:create(window)
     return self:new({awindow=window})
 end
+
+local mouses = {
+    ["mouse_click"] = true,
+    ["mouse_drag"] = true,
+    ["mouse_scroll"] = true,
+    ["mouse_up"] = true,
+}
+
+
+function RootElement:loop()
+    while true do
+        local event, misc, x, y = os.pullEvent()
+        if mouses[event] then
+            self:mouseEventRaw(event,misc,x,y)
+        end
+        self.awindow.clear()
+        self:rec_render()
+
+    end
+end
+
+
 return RootElement

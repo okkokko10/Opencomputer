@@ -1,5 +1,5 @@
-local BaseElement = require "okko.elements.BaseElement"
-local helpblit = require "okko.elements.helpblit"
+local BaseElement = require "/okko.elements.BaseElement"
+local helpblit = require "/okko.elements.helpblit"
 
 ---@class TextElement: BaseElement
 ---@field text string[][]
@@ -21,6 +21,9 @@ function TextElement:onRender()
 end
 
 function TextElement:create(text)
+    if type(text) == "string" then
+        text = {text}
+    end
     return self:new({text=text})
 end
 

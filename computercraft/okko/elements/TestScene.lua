@@ -1,27 +1,24 @@
-local BaseElement = require "okko.elements.BaseElement"
+local BaseElement = require "/okko.elements.BaseElement"
 
 print("imported BaseElement")
-local RootElement = require "okko.elements.RootElement"
+local RootElement = require "/okko.elements.RootElement"
 
 print("imported RootElement")
-local MyVariableRect = require "okko.elements.MyVariableRect"
+
+local Variable = require "/okko.elements.Variable"
+print("imported Variable")
+
+local MyVariableRect = require "/okko.elements.MyVariableRect"
 print("imported MyVariableRect")
 
 
 local root = RootElement:create(term.current())
 print("created root")
 
-root:addChild(MyVariableRect)
+root:addChild(MyVariableRect:create(Variable:create(16,2),Variable:create(16,5)))
 print("added child")
 
 root:rec_render()
 print("finished")
 
-while true do
-    local event, misc, x, y = os.pullEvent("mouse_drag")
-    -- print(misc,x,y)
-    root:mouseEventRaw(event,misc,x,y)
-    term.clear()
-    root:rec_render()
-
-end
+root:loop()
