@@ -7,9 +7,9 @@ local TextElement = BaseElement:new()
 
 
 function TextElement:onRender()
-    local window = self:getWindow()
+    -- local window = self:getWindow()
     for index, value in ipairs(self.text) do
-        window.setCursorPos(1,index)
+        local window = self:setCursorPos(1,index)
         if type(value) == "string" then
             helpblit.blitHet(value, nil, nil, window)
         else
@@ -20,8 +20,8 @@ function TextElement:onRender()
     
 end
 
-function TextElement:create(text,width,height)
-    return self:new({text=text,width,height})
+function TextElement:create(text)
+    return self:new({text=text})
 end
 
 

@@ -7,6 +7,9 @@ local BaseVariableRectElement = BaseElement:new()
 
 function BaseVariableRectElement:onMouseEvent(event, misc, x, y)
     -- if event ~= ""
+    if not self:isLocalBounded(x,y) then
+        return false
+    end
     if self.vx then
         self.vx:set(x)
     end
@@ -18,7 +21,9 @@ function BaseVariableRectElement:onMouseEvent(event, misc, x, y)
 end
 
 function BaseVariableRectElement:onPostParentInit()
-    self:remakeWindow(self.vx and self.vx.range or 1, self.vy and self.vy.range or 1)
+    self.width = self.vx and self.vx.range or 1
+    self.height = self.vy and self.vy.range or 1
+    -- self:remakeWindow(self.vx and self.vx.range or 1, self.vy and self.vy.range or 1)
 end
 
 
