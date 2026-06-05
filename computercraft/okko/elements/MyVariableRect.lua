@@ -1,8 +1,8 @@
-local BaseElement = require "BaseElement"
-local BaseVariableRectElement = require "BaseVariableRectElement"
-local Variable = require "Variable"
-local VisibleVariableRect = require "VisibleVariableRect"
-local TextElement = require "TextElement"
+local BaseElement = require "okko.elements.BaseElement"
+local BaseVariableRectElement = require "okko.elements.BaseVariableRectElement"
+local Variable = require "okko.elements.Variable"
+local VisibleVariableRect = require "okko.elements.VisibleVariableRect"
+local TextElement = require "okko.elements.TextElement"
 local FillElement = require "FillElement"
 
  

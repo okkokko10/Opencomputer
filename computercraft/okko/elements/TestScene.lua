@@ -1,10 +1,10 @@
-local BaseElement = require "BaseElement"
+local BaseElement = require "okko.elements.BaseElement"
 
 print("imported BaseElement")
-local RootElement = require "RootElement"
+local RootElement = require "okko.elements.RootElement"
 
 print("imported RootElement")
-local MyVariableRect = require "MyVariableRect"
+local MyVariableRect = require "okko.elements.MyVariableRect"
 print("imported MyVariableRect")
 
 

@@ -1,4 +1,4 @@
-local BaseElement = require "BaseElement"
+local BaseElement = require "okko.elements.BaseElement"
 
 ---@class RootElement: BaseElement
 ---@field parent_window unknown
