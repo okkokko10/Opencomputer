@@ -22,6 +22,7 @@ return {
         forw = {base_type = "redstone_relay_out", relay = name0, side = "right"},
     },
     balloon = {
-        one = {base_type = "redstone_relay_out", relay = name1, side = "back"}
+        one = {base_type = "redstone_relay_out", relay = name1, side = "back"},
+        two = {base_type = "redstone_relay_out", relay = name1, side = "top"}
     }
 }

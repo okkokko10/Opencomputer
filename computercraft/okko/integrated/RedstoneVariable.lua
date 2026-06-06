@@ -1,4 +1,4 @@
-local Variable = require "/okko/elements/Variable"
+local Variable = require "/okko.elements.Variable"
 
 local RedstoneVariable = {}
 

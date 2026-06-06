@@ -90,17 +90,40 @@ local function mouse_adjust(tEvent,data)
     return {tEvent[1],tEvent[2],tEvent[3]+xAdjust,tEvent[4]+yAdjust}
 end
 
---- todo: if the value is a function, use it to change the value.
+--- todo: if the value is a function, use it to change the value. also if it returns nil, an event is not sent.
 local sendable_events = {
-    ["char"] = true,
+    ["char"] = function(tEvent,data)
+        -- listens for ä press, and terminates if so
+        if tEvent[2] == "ä" then
+            return table.pack("terminate", true)
+        else
+            return tEvent
+        end 
+
+    end,
     -- ["file_transfer"] = true,
     ["key"] = true,
+    -- function(tEvent,data)
+    --     -- listens for ä press, and terminates if so
+    --     if tEvent[2] == 39 then
+    --         -- return table.pack("terminate", true)
+    --     else
+    --         return tEvent
+    --     end
+
+    -- end,
     ["key_up"] = true,
     ["mouse_click"] = mouse_adjust,
     ["mouse_drag"] = mouse_adjust,
     ["mouse_scroll"] = mouse_adjust,
     ["mouse_up"] = mouse_adjust,
     ["paste"] = true,
+    -- ["terminate_remote"] = function (tEvent,data)
+    --     if data.isHost then
+
+    --     end
+
+    -- end
 }
 
 function remote.send_events(remoteData)
@@ -112,7 +135,9 @@ function remote.send_events(remoteData)
             if te ~= true then
                 tEvent = te(tEvent,remoteData)
             end
-            rednet.send(remoteData.hostID,tEvent,"redirect_remote_event")
+            if tEvent then
+                rednet.send(remoteData.hostID,tEvent,"redirect_remote_event")
+            end
         end
     end
 end
@@ -127,11 +152,14 @@ function host.event_received(message,hostData)
     if multishell then
         multishell.setFocus(multishell.getCurrent())
     end
-    os.queueEvent(unpack(message))
+    if message then
+        os.queueEvent(unpack(message))
+    end
 end
 function host.listen_events(hostData)
     while true do
-        local sender, message = rednet.receive("redirect_remote_event")
+        
+        local res, sender, message = pcall(rednet.receive,"redirect_remote_event")
         if hostData.remoteID and hostData.remoteID == sender then
             host.event_received(message,hostData)
         end
@@ -139,13 +167,15 @@ function host.listen_events(hostData)
 end
 
 function remote.open(remoteData)
+    term.clear()
+    term.write("connection opening...")
     local height, width = remoteData.window.getSize()
     rednet.send(remoteData.hostID,{height=height,width=width},"redirect_remote_open_remote")
 end
 
 function host.listen_open(hostData)
     while true do
-        local sender, message = rednet.receive("redirect_remote_open_remote")
+        local res, sender, message = pcall(rednet.receive,"redirect_remote_open_remote")
         if hostData.remoteID and hostData.remoteID == sender then
             local px,py = hostData.window.getPosition()
             hostData.window.reposition(px,py,message.height,message.width)
@@ -154,26 +184,51 @@ function host.listen_open(hostData)
     end
     
 end
-function host.listen_resize(hostData)
+function host.open(hostData)
+    rednet.send(hostData.remoteID,"redirect_remote_open_host")
+end
+function remote.listen_open(remoteData)
     while true do
-        local event = os.pullEvent("term_resize")
+        local res, sender, message = pcall(rednet.receive,"redirect_remote_open_remote")
+        if remoteData.hostID and remoteData.hostID == sender then
+            remote.open(remoteData)
+        end
+    end
+    
+end
+
+function host.listen_resize(hostData)
+    local run = true
+    while run do
+        local event,isFake = os.pullEventRaw("term_resize")
+        if event == "terminate" and not isFake then -- I think this ends up handling the fact that the other two threads don't exit on terminate
+            break
+        end
         -- local px,py = hostData.window.getPosition()
-        local ox, oy = getOffset(hostData.window)
-        hostData.ox = ox
-        hostData.oy = oy
+        if not hostData.manualOffset then
+            local ox, oy = getOffset(hostData.window)
+            hostData.ox = ox
+            hostData.oy = oy
+        end
     end
 end
 
 
 
-function host.hook(remoteID,wind)
+function host.hook(remoteID,wind,ox,oy)
     local hostData = {isHost=true,remoteID = remoteID,window = wind.hostcopy, send_window = wind, ox = wind.ox, oy = wind.oy}
+    if ox then
+        hostData.ox = ox
+        hostData.oy = oy
+        hostData.manualOffset = true
+    end
     parallel.waitForAny(
     function ()
         host.listen_events(hostData)
     end,function ()
         host.listen_open(hostData)
-    end,function ()
+    end
+    ,function ()
         host.listen_resize(hostData)
     end
     )
@@ -208,5 +263,6 @@ end
 
 return {host = host, remote = remote,
     nWidth = 20,
-    nHeight = 20
+    nHeight = 20,
+    names = {base = 13, ship = 14, phone = 12}
 }

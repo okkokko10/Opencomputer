@@ -9,7 +9,15 @@ local redirect_remote = require "redirect_remote"
 
 local tArgs = { ... }
 
-local sProgram = tArgs[2]
+
+local remoteID = tonumber(tArgs[1])
+if remoteID == nil then
+    remoteID = redirect_remote.names[tArgs[1]]
+end
+local ox = tonumber(tArgs[2])
+local oy = tonumber(tArgs[3])
+
+local sProgram = tArgs[4]
 
 local sPath = shell.resolveProgram(sProgram)
 if sPath == nil then
@@ -17,13 +25,13 @@ if sPath == nil then
     return
 end
 
-local remoteID = tonumber(tArgs[1])
+
 
 -- print(term.current())
 local wind = redirect_remote.host.new_redirect(remoteID,term.current(),1,1,redirect_remote.nWidth,redirect_remote.nHeight)
 local previousTerm = term.redirect(wind)
 
 parallel.waitForAny((function()
-        (shell.execute or shell.run)(sProgram, table.unpack(tArgs, 3))
-    end),function () redirect_remote.host.hook(remoteID,wind) end)
+        (shell.execute or shell.run)(sProgram, table.unpack(tArgs, 5))
+    end),function () redirect_remote.host.hook(remoteID,wind,ox,oy) end)
 term.redirect(previousTerm)
