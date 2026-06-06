@@ -1,4 +1,4 @@
-local Variable = require "/okko.elements.Variable"
+local Variable = require "/okko.Variables.Variable"
 
 local RedstoneVariable = {}
 
@@ -13,21 +13,7 @@ function RedstoneVariable.convert(relaySide)
     end)
 end
 
--- --- coll is a nested table with RedstoneRelaySide at the leaves, or a RedstoneRelaySide
--- --- coll cannot contain "relay" unless it is a leaf
--- function RedstoneVariable.convertNested(coll)
---     if coll.relay then
---         return RedstoneVariable.convert(coll)
---     end
---     local out = {}
---     for key, value in pairs(coll) do
---         if type(value) == "table" then
---             out[key] = RedstoneVariable.convertNested(value)
---         else
---             out[key] = value
---         end
---     end
---     return out
--- end
+local BuildVariable = require "/okko.Variables.BuildVariable"
+BuildVariable.base_types.redstone_relay_out = RedstoneVariable.convert
 
 return RedstoneVariable

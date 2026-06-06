@@ -1,4 +1,4 @@
-local Variable = require "/okko.elements.Variable"
+local Variable = require "/okko.Variables.Variable"
 
 
 local MotorVariable = {}
@@ -25,4 +25,8 @@ function MotorVariable.create(coll)
     end)
     return var
 end
+
+local BuildVariable = require "/okko.Variables.BuildVariable"
+BuildVariable.compose_types.motor = MotorVariable.create
+
 return MotorVariable

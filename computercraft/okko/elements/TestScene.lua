@@ -5,7 +5,7 @@ local RootElement = require "/okko.elements.RootElement"
 
 print("imported RootElement")
 
-local Variable = require "/okko.elements.Variable"
+local Variable = require "/okko.Variables.Variable"
 print("imported Variable")
 
 local MyVariableRect = require "/okko.elements.MyVariableRect"

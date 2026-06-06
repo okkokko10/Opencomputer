@@ -1,6 +1,6 @@
 local BaseElement = require "/okko.elements.BaseElement"
 local BaseVariableRectElement = require "/okko.elements.BaseVariableRectElement"
-local Variable = require "/okko.elements.Variable"
+local Variable = require "/okko.Variables.Variable"
 
 
 ---@class VisibleVariableRect: BaseElement

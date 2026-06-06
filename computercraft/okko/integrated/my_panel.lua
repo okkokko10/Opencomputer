@@ -1,10 +1,10 @@
 local BaseElement = require "/okko.elements.BaseElement"
 local TextElement = require "/okko.elements.TextElement"
 
-local RootElement = require "/okko/elements/RootElement"
-local MyVariableRect = require "/okko/elements/MyVariableRect"
+local RootElement = require "/okko.elements.RootElement"
+local MyVariableRect = require "/okko.elements.MyVariableRect"
 
-local my_variables = require "/okko/integrated/my_variables"
+local my_variables = require "/okko.integrated.my_variables"
 
 local pretty = require "cc.pretty"
 local f = fs.open("/okko/integrated/myvars.txt","w")

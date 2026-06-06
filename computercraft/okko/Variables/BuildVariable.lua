@@ -1,7 +1,5 @@
-local Variable = require "/okko.elements.Variable"
-local RedstoneVariable = require "/okko.integrated.RedstoneVariable"
-local MotorVariable = require "/okko.integrated.MotorVariable"
-local my_redstone_links = require "/okko.integrated.my_redstone_links"
+local Variable = require "/okko.Variables.Variable"
+-- local my_redstone_links = require "/okko.integrated.my_redstone_links"
 
 ---@class BuildVariable
 ---@field base_types {[string]:fun(coll:table):Variable}
@@ -9,8 +7,6 @@ local my_redstone_links = require "/okko.integrated.my_redstone_links"
 local BuildVariable = {base_types = {},compose_types = {}}
 
 
-BuildVariable.base_types.redstone_relay_out = RedstoneVariable.convert
-BuildVariable.compose_types.motor = MotorVariable.create
 
 -- local pretty = require "cc.pretty"
 

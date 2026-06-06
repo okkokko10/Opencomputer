@@ -1,5 +1,5 @@
-local my_redstone_links = require "my_redstone_links"
-local BuildVariable = require "BuildVariable"
+local my_redstone_links = require "/okko.integrated.my_redstone_links"
+local BuildVariable = require "/okko.Variables.BuildVariableInitialized"
 return BuildVariable.convertNested(my_redstone_links)
 
 
