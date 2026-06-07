@@ -31,7 +31,7 @@ function RescaledVariable:create(original,slope,offset)
         nmin,nmax = nmax,nmin
     end
     local new = NumberVariable:create(oval and toMapped(oval),nmin,nmax)
-    BijectionVariable.makeBijection(new,original,toMapped,toOriginal)
+    BijectionVariable.makeBijection(new,original,toMapped,toOriginal)()
     return new
     -- return self:new({value=nil, callbacks = original.callbacks})
 end

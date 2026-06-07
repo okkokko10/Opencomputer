@@ -21,11 +21,10 @@ local VisibleVariableRect = BaseElement:new()
 ---@param nub BaseElement
 ---@return VisibleVariableRect
 function VisibleVariableRect:create(board,seen_board,nub)
-    local funcc = function (vx,vy)
+    local funcc = function (origins,vx,vy)
         nub:setCenter(vx and vx:getVisual() or 1, vy and vy:getVisual() or 1)
     end
     Variable.addCallbackGroup(funcc,board:getVariables())
-    
     local this = self:new({board=board,seen_board = seen_board, nub=nub})
     this:addChild(board)
     this:addChild(seen_board:setSize(board:getSize()))

@@ -10,7 +10,7 @@ local RedstoneVariable = NumberVariable:new()
 ---@param value any
 ---@return RedstoneVariable
 function RedstoneVariable:create(value)
-    return self:new(NumberVariable:createInterval(0,15,value))
+    return self:new(NumberVariable:create(value,0,15))
 end
 
 return RedstoneVariable

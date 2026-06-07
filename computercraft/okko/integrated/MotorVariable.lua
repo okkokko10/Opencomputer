@@ -36,7 +36,8 @@ end
 ---comment
 ---@param coll {speed: RedstoneVariable, rev: RedstoneVariable, forw: RedstoneVariable}
 function MotorVariable.motor(coll)
-    local var = RedstoneVariable:var(MotorVariable.from_directional(coll.speed:get(),coll.rev:get(),coll.forw:get())) or 0
+    local var = NumberVariable:create(MotorVariable.from_directional(coll.speed:get(),coll.rev:get(),coll.forw:get()) or 0, -15, 15)
+    var:enforceInterval()
     var:addCallback(function (origins,v)
         local val = v:get()
         local s,r,f = MotorVariable.to_directional(val)
@@ -75,7 +76,7 @@ end
 ---@param coll {gearshift: RedstoneVariable, analog: RedstoneVariable, flip: boolean|nil}
 function MotorVariable.motor_nondirectional(coll)
     local flip = not not coll.flip
-    local var = RedstoneVariable:var(MotorVariable.from_nondirectional(coll.gearshift:get(),coll.analog:get(),flip)) or 0
+    local var = NumberVariable:create(MotorVariable.from_nondirectional(coll.gearshift:get(),coll.analog:get(),flip) or 0,-15,15)
     var:addCallback(function (origins,v)
         local val = v:get()
         local g,a = MotorVariable.to_nondirectional(val,flip)

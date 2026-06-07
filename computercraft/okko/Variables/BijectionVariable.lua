@@ -14,11 +14,11 @@ local BijectionVariable = Variable:new()
 ---@param toOriginal fun(value:T):To
 ---@return BijectionVariable[T,To]
 function BijectionVariable:create(original,toMapped,toOriginal)
-    local oval = original:get()
     -- local new = self:new({original=original,toMapped=toMapped,toOriginal=toOriginal}) -- these fields are not strictly necessary
     local new = self:new()
     ---@cast new BijectionVariable[T,To]
-    if oval ~= nil then
+    local oval = original:get()
+    if oval ~= nil and toMapped then
         new.value = toMapped(oval)
     end
     BijectionVariable.makeBijection(new,original,toMapped,toOriginal)
@@ -26,17 +26,31 @@ function BijectionVariable:create(original,toMapped,toOriginal)
     -- return self:new({value=nil, callbacks = original.callbacks})
 end
 
+
+-- returns functions that update the values immediately
 function BijectionVariable.makeBijection(mapped,original,toMapped,toOriginal)
+    local function updateMapped (origins)
+        mapped:set(toMapped(original:get()),origins)
+    end
+    if toMapped then
+        original:addCallback(updateMapped)
+    end
+    local function updateOriginal (origins)
+        original:set(toOriginal(mapped:get()),origins)
+    end
+    if toOriginal then
+        mapped:addCallback(updateOriginal)
+    end
     
-
-    original:addCallback(function (origins,v)
-        mapped:set(toMapped(v:get()),origins)
-    end)
-    
-    mapped:addCallback(function (origins,v)
-        original:set(toOriginal(v:get()),origins)
-    end)
-
+    return function ()
+        if toMapped then
+            updateMapped({original=1,n=1})
+        end
+    end,function ()
+        if toOriginal then
+            updateOriginal({mapped=1,n=1})
+        end
+    end
 end
 
 

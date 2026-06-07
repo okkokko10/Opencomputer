@@ -12,7 +12,8 @@ local MyVariableRect = VisibleVariableRect:new()
 function MyVariableRect:create(vx,vy)
     return VisibleVariableRect:create(
     BaseVariableRectElement:create(vx,vy),
-    FillElement:create("x", "3", "45"), TextElement:create({{" | ", " 1 "},{"-x-","121"," 3 "}, {" | ", " 1 "}}):defineCenter(2,2)
+    FillElement:create("x", "3", "45"), 
+    TextElement:create({{" | ", " 1 "},{"-x-","121"," 3 "}, {" | ", " 1 "}}):defineCenter(2,2)
 )
 end
 return MyVariableRect

@@ -48,9 +48,9 @@ end
 ---@param value T
 ---@param silent? CallbackOrigins|boolean
 function Variable:set_(value,silent)
-    if self.value == value then
-        return
-    end
+    -- if self.value == value then
+    --     return
+    -- end
     if type(silent) == "table" and silent[self] then
         return
     end

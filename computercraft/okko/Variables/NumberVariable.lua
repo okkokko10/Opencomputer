@@ -1,4 +1,5 @@
 local Variable = require "/okko.Variables.Variable"
+local debugger = require "/okko.integrated.debugger"
 
 
 
@@ -23,8 +24,8 @@ end
 function NumberVariable:create(value,min,max)
     local new =  self:new({value = value, min = min, max = max, callbacks = {}})
     if min and max then
-        self.range = max - min + 1
-        self.offset = min-1
+        new.range = max - min + 1
+        new.offset = min-1
     end
     return new
 
@@ -58,7 +59,27 @@ function NumberVariable:rescale(slope,offset)
     require "/okko.Variables.RescaledVariable"
     return NumberVariable:rescale(slope,offset)
 end
-
+function NumberVariable:isValid()
+    local value = self:get()
+    if not value then
+        return false
+    end
+    if (self.max and self.max < value) then
+        return false
+    end
+    if (self.min and self.min > value) then
+        return false
+    end
+    return true
+end
+function NumberVariable:enforceInterval()
+    self:addCallback(function (origins,v)
+        if not (v:isValid()) then
+            debugger.log({"interval violation",origins=origins,v=v})
+        end
+    end)
+    return self
+end
 
 
 return NumberVariable

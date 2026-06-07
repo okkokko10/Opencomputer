@@ -1,5 +1,6 @@
 local Variable = require "/okko.Variables.Variable"
 local RedstoneVariable = require "/okko.Variables.RedstoneVariable"
+local debugger         = require "/okko.integrated.debugger"
 
 local RedstoneRelayOutVariable = {}
 
@@ -9,8 +10,9 @@ local RedstoneRelayOutVariable = {}
 ---@return RedstoneVariable
 function RedstoneRelayOutVariable.convert(relaySide)
     local old_value = peripheral.call(relaySide.relay,"getAnalogOutput",relaySide.side)
-    return RedstoneVariable:create(old_value):addCallback(function (v)
-        peripheral.call(relaySide.relay,"setAnalogOutput",relaySide.side,v:getInterval())
+    return RedstoneVariable:create(old_value):addCallback(function (origins,v)
+        debugger.log({relay = relaySide, v = v, origins = origins})
+        peripheral.call(relaySide.relay,"setAnalogOutput",relaySide.side,v:get())
     end)
 end
 
