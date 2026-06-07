@@ -36,7 +36,8 @@ end
 
 --- coll is a nested table with RedstoneRelaySide at the leaves, or a RedstoneRelaySide
 --- coll cannot contain "relay" unless it is a leaf
----@return Variable|{[string]:Variable|{[string]:Variable|table}}
+-- -@param coll table
+-- -@return Variable|{[string]:Variable|{[string]:Variable|table}}
 function BuildVariable.convertNested(coll)
     if coll.base_type then
         return BuildVariable.convert_base(coll)

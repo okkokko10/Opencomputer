@@ -22,7 +22,7 @@ local VisibleVariableRect = BaseElement:new()
 ---@return VisibleVariableRect
 function VisibleVariableRect:create(board,seen_board,nub)
     local funcc = function (vx,vy)
-        nub:setCenter(vx and vx:get() or 1, vy and vy:get() or 1)
+        nub:setCenter(vx and vx:getVisual() or 1, vy and vy:getVisual() or 1)
     end
     Variable.addCallbackGroup(funcc,board:getVariables())
     

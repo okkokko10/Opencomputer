@@ -1,5 +1,6 @@
 local BaseElement = require "/okko.elements.BaseElement"
 local TextElement = require "/okko.elements.TextElement"
+local RescaledVariable = require "/okko.Variables.RescaledVariable"
 
 local RootElement = require "/okko.elements.RootElement"
 local MyVariableRect = require "/okko.elements.MyVariableRect"
@@ -19,7 +20,7 @@ local root = RootElement:create(term.current())
 
 -- todo: remote controls should link their variables, not
 
-root:addChild(MyVariableRect:create(my_variables.left,my_variables.right)):setPosition(2,1)
+root:addChild(MyVariableRect:create(my_variables.left:rescale(0.5),my_variables.right:rescale(0.5))):setPosition(2,1)
 
 
 -- root:addChild(MyVariableRect:create(my_variables.left,nil):setPosition(2,2))
@@ -29,8 +30,8 @@ root:addChild(MyVariableRect:create(my_variables.left,my_variables.right)):setPo
 
 -- todo: numbered lines
 
-root:addChild(MyVariableRect:create(nil,my_variables.balloon.one):setPosition(17,1))
-root:addChild(MyVariableRect:create(nil,my_variables.balloon.two):setPosition(22,1))
+root:addChild(MyVariableRect:create(nil,my_variables.balloon.one:rescale(-1)):setPosition(17,2))
+root:addChild(MyVariableRect:create(nil,my_variables.balloon.two:rescale(-1)):setPosition(22,2))
 
 root:addChild(TextElement:create({"x"}):setPosition(7,8))
 
