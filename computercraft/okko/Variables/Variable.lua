@@ -20,7 +20,7 @@ function Variable:new(o)
 end
 
 ---@generic T
----@param value T
+---@param value? T
 ---@return Variable[T]
 function Variable:create(value)
     return self:new({value=value, callbacks = {}})
@@ -111,12 +111,27 @@ end
 
 ---@generic T, To
 ---@param self Variable[To]
----@param toMapped fun(value:To):T
----@param toOriginal fun(value:T):To
+---@param toMapped? fun(value:To):T
+---@param toOriginal? fun(value:T):To
 ---@return BijectionVariable[T,To]
 function Variable:bijection(toMapped,toOriginal)
     require "/okko.Variables.BijectionVariable" -- changes this function
     return self:bijection(toMapped,toOriginal)
+end
+
+function Variable:equate(original)
+    require "/okko.Variables.BijectionVariable" -- changes this function
+    return self:equate(original)
+end
+
+Variable.isVariable = true
+
+function Variable.getRealize(this)
+    if type(this) == "table" and this.isVariable then
+        return this:get()
+    else
+        return this
+    end
 end
 
 

@@ -15,7 +15,7 @@ local BijectionVariable = Variable:new()
 ---@return BijectionVariable[T,To]
 function BijectionVariable:create(original,toMapped,toOriginal)
     -- local new = self:new({original=original,toMapped=toMapped,toOriginal=toOriginal}) -- these fields are not strictly necessary
-    local new = self:new()
+    local new = self:new(Variable:create())
     ---@cast new BijectionVariable[T,To]
     local oval = original:get()
     if oval ~= nil and toMapped then
@@ -53,6 +53,12 @@ function BijectionVariable.makeBijection(mapped,original,toMapped,toOriginal)
     end
 end
 
+--- makes self equal original
+function Variable:equate(original)
+    local function id(x) return x end
+    BijectionVariable.makeBijection(self,original,id, id)()
+    return self
+end
 
 
 ---@generic T, To

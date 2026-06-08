@@ -59,6 +59,18 @@ function NumberVariable:rescale(slope,offset)
     require "/okko.Variables.RescaledVariable"
     return NumberVariable:rescale(slope,offset)
 end
+
+function NumberVariable:visual()
+    return self:rescale(1,-self.offset)
+end
+function NumberVariable:flip()
+    -- omax == nmax = slope*omin+offset
+    -- omax = -omin+offset
+    -- omin = -omax+offset
+    -- omax+omin=offset
+    return self:rescale(-1,self.max+self.min)
+end
+
 function NumberVariable:isValid()
     local value = self:get()
     if not value then

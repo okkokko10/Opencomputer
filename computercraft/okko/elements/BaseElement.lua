@@ -1,3 +1,4 @@
+local Variable = require "/okko.Variables.Variable"
 
 
 ---@class BaseElement
@@ -29,7 +30,7 @@ BaseElement.__index = BaseElement
 -- end
 
 function BaseElement:getPosition()
-    return self.px,self.py
+    return Variable.getRealize(self.px) - self.cx + 1,Variable.getRealize(self.py) - self.cy + 1
 end
 
 
@@ -50,21 +51,22 @@ function BaseElement:setSize(hx,hy)
     
 end
 function BaseElement:getSize()
-    return self.width,self.height
+    return Variable.getRealize(self.width),Variable.getRealize(self.height)
     
 end
 
 
 function BaseElement:getParentGlobalPosition()
     if self.parent then
-        return self.parent:getPosition()
+        return self.parent:getGlobalPosition()
     else
         return 1, 1
     end
 end
 function BaseElement:getGlobalPosition()
     local plx, ply = self:getParentGlobalPosition()
-    return plx+self.px-1,ply+self.py-1
+    local px,py = self:getPosition()
+    return plx+px-1,ply+py-1
 end
 
 
@@ -90,7 +92,8 @@ function BaseElement:setCursorPos(x,y)
 end
 
 function BaseElement:isLocalBounded(x,y)
-    return (1 <= x and x <= self.width and 1 <= y and y <= self.height) 
+    local width,height = self:getSize()
+    return (1 <= x and x <= width and 1 <= y and y <= height) 
 end
 
 local consumeEvents = false
@@ -190,9 +193,10 @@ function BaseElement:defineCenter(x,y)
     self.cy = y
     return self
 end
+-- deprecated.
 function BaseElement:setCenter(x,y)
-    self.px = x - self.cx + 1
-    self.py = y - self.cy + 1
+    self.px = x -- - self.cx + 1
+    self.py = y -- - self.cy + 1
     return self
 end
 
@@ -207,9 +211,9 @@ BaseElement.cy = 1
 
 function BaseElement:new(o)
     o = o or {}
+    if not o.children then o.children = {} end
     setmetatable(o, self)
     self.__index = self
-    if not o.children then o.children = {} end
     return o
     -- return setmetatable({children={},px=1,py=1},BaseElement)
 end

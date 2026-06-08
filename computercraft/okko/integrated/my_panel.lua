@@ -20,7 +20,7 @@ local root = RootElement:create(term.current())
 
 -- todo: remote controls should link their variables, not
 
-root:addChild(MyVariableRect:create(my_variables.left:rescale(0.25),my_variables.right:rescale(0.25)):setPosition(5,5))
+root:addChild(MyVariableRect:create(my_variables.left:rescale(0.25),my_variables.right:rescale(0.25)):setPosition(10,12))
 
 
 -- root:addChild(MyVariableRect:create(my_variables.left,nil):setPosition(2,2))
@@ -30,11 +30,12 @@ root:addChild(MyVariableRect:create(my_variables.left:rescale(0.25),my_variables
 
 -- todo: numbered lines
 
-root:addChild(MyVariableRect:create(false,my_variables.balloon.one:rescale(-1)):setPosition(18,2))
-root:addChild(MyVariableRect:create(false,my_variables.balloon.two:rescale(-1)):setPosition(22,2))
 
-root:addChild(MyVariableRect:create(false,my_variables.left:rescale(-1)):setPosition(25,2))
-root:addChild(MyVariableRect:create(false,my_variables.right:rescale(-1)):setPosition(28,2))
+root:addChild(MyVariableRect:create(my_variables.right):setPosition(2,4))
+root:addChild(MyVariableRect:create(my_variables.left):setPosition(2,2))
+
+root:addChild(MyVariableRect:create(my_variables.balloon.two):setPosition(3,9))
+root:addChild(MyVariableRect:create(my_variables.balloon.one):setPosition(3,7))
 
 root:addChild(TextElement:create({"x"}):setPosition(7,8))
 
