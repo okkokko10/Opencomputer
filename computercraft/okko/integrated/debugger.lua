@@ -39,7 +39,7 @@ end
 function debugger.log(message)
     os.queueEvent("debug",message)
 end
-print(...)
+-- print(...)
 if select(1,...) == "run" then
     debugger.run(select(2,...) or "debug_log.txt")
 end

@@ -54,9 +54,10 @@ function BijectionVariable.makeBijection(mapped,original,toMapped,toOriginal)
 end
 
 --- makes self equal original
-function Variable:equate(original)
+function Variable:equate(original,noupdate)
     local function id(x) return x end
-    BijectionVariable.makeBijection(self,original,id, id)()
+    local f = BijectionVariable.makeBijection(self,original,id, id)
+    if not noupdate then f() end
     return self
 end
 

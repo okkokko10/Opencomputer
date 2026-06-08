@@ -4,6 +4,8 @@ local debugger = require "/okko.integrated.debugger"
 
 
 ---@class NumberVariable: Variable
+---@field min number
+---@field max number
 ---@field range number
 ---@field offset number
 local NumberVariable = Variable:new()
@@ -21,6 +23,12 @@ end
 -- function NumberVariable:createInterval(min,max,value)
 --     return self:create(max-min+1,value-min+1,min-1)
 -- end
+
+
+---@param value? number
+---@param min? number
+---@param max? number
+---@return NumberVariable
 function NumberVariable:create(value,min,max)
     local new =  self:new({value = value, min = min, max = max, callbacks = {}})
     if min and max then
@@ -30,6 +38,17 @@ function NumberVariable:create(value,min,max)
     return new
 
 end
+
+function NumberVariable:save()
+    local out = Variable.save(self)
+    out.min = self.min
+    out.max = self.max
+    return out
+end
+function NumberVariable:load(tbl)
+    return self:new(NumberVariable:create(tbl.value,tbl.min,tbl.max))
+end
+
 
 function NumberVariable:setVisual(value,silent)
     self:set(value+self.offset,silent)
