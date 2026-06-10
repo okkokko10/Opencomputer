@@ -95,35 +95,34 @@ local sendable_events = {
     ["char"] = function(tEvent,data)
         -- listens for ä press, and terminates if so
         if tEvent[2] == "ä" then
-            return table.pack("terminate", true)
+            -- return table.pack("terminate", true)
         else
             return tEvent
         end 
 
     end,
     -- ["file_transfer"] = true,
-    ["key"] = true,
-    -- function(tEvent,data)
-    --     -- listens for ä press, and terminates if so
-    --     if tEvent[2] == 39 then
-    --         -- return table.pack("terminate", true)
-    --     else
-    --         return tEvent
-    --     end
-
-    -- end,
+    ["key"] = 
+    function(tEvent,data)
+        -- listens for ä press, and terminates if so
+        if tEvent[2] == 39 then
+            return table.pack("terminate", true)
+        else
+            return tEvent
+        end
+    end,
     ["key_up"] = true,
     ["mouse_click"] = mouse_adjust,
     ["mouse_drag"] = mouse_adjust,
     ["mouse_scroll"] = mouse_adjust,
     ["mouse_up"] = mouse_adjust,
     ["paste"] = true,
-    -- ["terminate_remote"] = function (tEvent,data)
-    --     if data.isHost then
+    ["terminate"] = function (tEvent,data)
+        if data.isHost then
+            return tEvent
+        end
 
-    --     end
-
-    -- end
+    end
 }
 
 function remote.send_events(remoteData)

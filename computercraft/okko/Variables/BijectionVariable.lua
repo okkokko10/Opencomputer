@@ -53,6 +53,44 @@ function BijectionVariable.makeBijection(mapped,original,toMapped,toOriginal)
     end
 end
 
+function BijectionVariable.makeMultiConnection(one,many,setOne,setMany)
+    local function updateOne (origins)
+        for key, value in pairs(many) do
+            Variable.stampOrigins(origins,value:getID())
+            if value:get() == nil then
+                return
+            end
+        end
+        setOne(origins,many,one)
+    end
+    if setOne then
+        for key, value in pairs(many) do
+            value:addCallback(updateOne)
+        end
+    end
+    local function updateMany (origins)
+        if one:get() == nil then
+            return
+        end
+        setMany(origins,one,many)
+    end
+    if setMany then
+        one:addCallback(updateMany)
+    end
+    
+    return function ()
+        if setOne then
+            updateOne({})
+        end
+    end,function ()
+        if setMany then
+            updateMany({one=1,n=1})
+        end
+    end
+end
+
+
+
 --- makes self equal original
 function Variable:equate(original,noupdate)
     local function id(x) return x end

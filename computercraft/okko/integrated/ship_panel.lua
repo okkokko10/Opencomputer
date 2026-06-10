@@ -30,6 +30,9 @@ local balloon_one = ExposedVariable:link("ship.balloon.one",NumberVariable:creat
 local balloon_two = ExposedVariable:link("ship.balloon.two",NumberVariable:create(nil,0,15),true)
 print("all")
 
+local speed = ExposedVariable:link("ship.autopilot.speed",NumberVariable:create(0,-15,15),false)
+print("speed")
+
 root:addChild(MyVariableRect:create(propeller_left:rescale(0.25),propeller_right:rescale(0.25)):setPosition(10,12))
 print("1 child")
 
@@ -46,8 +49,9 @@ root:addChild(MyVariableRect:create(propeller_left):setPosition(2,2))
 
 root:addChild(MyVariableRect:create(balloon_two):setPosition(3,9))
 root:addChild(MyVariableRect:create(balloon_one):setPosition(3,7))
+root:addChild(MyVariableRect:create(speed):setPosition(3,11))
 
-root:addChild(TextElement:create({"x"}):setPosition(7,8))
+-- root:addChild(TextElement:create({"x"}):setPosition(7,8))
 
 
 -- my_variables.left:updateCallbacks()

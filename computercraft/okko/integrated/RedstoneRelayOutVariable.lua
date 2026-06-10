@@ -12,7 +12,10 @@ function RedstoneRelayOutVariable.convert(relaySide)
     local old_value = peripheral.call(relaySide.relay,"getAnalogOutput",relaySide.side)
     return RedstoneVariable:create(old_value):addCallback(function (origins,v)
         debugger.log({relay = relaySide, v = v, origins = origins})
-        peripheral.call(relaySide.relay,"setAnalogOutput",relaySide.side,v:get())
+        local val = v:get()
+        if type(val) == "number" and 0 <= val and val <= 15 then
+            peripheral.call(relaySide.relay,"setAnalogOutput",relaySide.side,val)
+        end
     end)
 end
 
